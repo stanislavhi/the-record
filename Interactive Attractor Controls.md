@@ -1342,3 +1342,25 @@ Each file now includes:
 ```
 
 All documentation is now consistent and ready for GitHub.
+
+### User Input
+
+add it to readme too
+
+*Viewed [README.md](file:///Users/stanislavhiznicenco/.gemini/antigravity/scratch/the-record/README.md) *
+
+*Edited relevant file*
+
+### Planner Response
+
+**Done.** 
+
+The README now includes the full AI generation note with the chat history link:
+
+```markdown
+> **🤖 Fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+>
+> See [Interactive Attractor Controls.md](Interactive%20Attractor%20Controls.md) for the complete conversation log.
+```
+
+All documentation is now consistent and ready for GitHub upload.

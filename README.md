@@ -7,6 +7,8 @@ An interactive visualization of chaotic attractors—mathematical systems that m
 ![The Record](https://img.shields.io/badge/React-19-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![Vite](https://img.shields.io/badge/Vite-7-purple)
 
 > **🤖 Fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+>
+> See [Interactive Attractor Controls.md](Interactive%20Attractor%20Controls.md) for the complete conversation log.
 
 ## ✨ Features
 
