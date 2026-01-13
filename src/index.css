@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-void: #0a0a0a;
+  --color-ink-high: #00f3ff;
+  --color-ink-low: #ff0055;
+  --color-grid: #1a1a1a;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-void);
+  color: var(--color-ink-high);
+  font-family: 'JetBrains Mono', monospace;
+  overflow: hidden; /* Prevent scrolling, canvas takes full screen */
+  width: 100vw;
+  height: 100vh;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
