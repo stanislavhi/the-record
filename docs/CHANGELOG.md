@@ -1,5 +1,9 @@
 # Development Changelog
 
+> **🤖 This project was fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+>
+> See [Interactive Attractor Controls.md](../Interactive%20Attractor%20Controls.md) for the complete conversation log.
+
 A complete record of all development tasks completed for **The Record** project.
 
 ## Project Setup

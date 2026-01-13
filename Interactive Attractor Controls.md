@@ -1291,3 +1291,54 @@ add Task and Walkthorugh archives to .MD files to be uploaded too, github repo s
 *Edited relevant file*
 
 *Edited relevant file*
+
+### User Input
+
+add to Readme this: Fully generated with Opus 4.5 and Gemini 3.0 - Chat only.
+also mention that Interactive Attractors Controls.md link to mention that chat history is there, also remove MIT license from readme as is not true
+
+*Viewed [README.md](file:///Users/stanislavhiznicenco/.gemini/antigravity/scratch/the-record/README.md) *
+
+*Viewed [README.md](file:///Users/stanislavhiznicenco/.gemini/antigravity/scratch/the-record/README.md) *
+
+*Edited relevant file*
+
+### Planner Response
+
+**README Updated.**
+
+Changes made:
+1. ✅ Added **"Fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only."** as a prominent note
+2. ✅ Added link to **Interactive Attractor Controls.md** (chat history) in the Documentation section
+3. ✅ Removed the MIT License section
+
+The repository is now ready for GitHub upload with full attribution and chat history included.
+
+### User Input
+
+also update docs with this new info
+
+*Edited relevant file*
+
+*Edited relevant file*
+
+*Edited relevant file*
+
+### Planner Response
+
+**All Documentation Updated.**
+
+Added the AI generation credit and chat history link to:
+
+- ✅ **CHANGELOG.md**
+- ✅ **WALKTHROUGH.md** 
+- ✅ **ARCHITECTURE.md**
+
+Each file now includes:
+```markdown
+> **🤖 This project was fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+>
+> See [Interactive Attractor Controls.md](../Interactive%20Attractor%20Controls.md) for the complete conversation log.
+```
+
+All documentation is now consistent and ready for GitHub.

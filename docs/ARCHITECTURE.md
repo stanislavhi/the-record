@@ -1,5 +1,9 @@
 # Architecture: The Record
 
+> **🤖 This project was fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+>
+> See [Interactive Attractor Controls.md](../Interactive%20Attractor%20Controls.md) for the complete conversation log.
+
 ## Design Philosophy
 
 The Record embodies the philosophical question: *"If the Database is the atemporal record of all computation, and our thought is the flicker that writes to it, what is the color of the ink?"*

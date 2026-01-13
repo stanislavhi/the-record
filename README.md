@@ -6,6 +6,8 @@ An interactive visualization of chaotic attractors—mathematical systems that m
 
 ![The Record](https://img.shields.io/badge/React-19-blue) ![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue) ![Vite](https://img.shields.io/badge/Vite-7-purple)
 
+> **🤖 Fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+
 ## ✨ Features
 
 - **10 Chaotic Attractors** — Lorenz, Rossler, Henon, Chua, Sprott, Four-Wing, Rabinovich, Halvorsen, Dadras, Aizawa
@@ -102,6 +104,7 @@ src/
 - [Architecture](docs/ARCHITECTURE.md) — System design, data flow, and type definitions
 - [Walkthrough](docs/WALKTHROUGH.md) — Detailed feature guide and usage instructions
 - [Changelog](docs/CHANGELOG.md) — Complete development history
+- [Chat History](Interactive%20Attractor%20Controls.md) — Full AI conversation log
 
 ## 🛠️ Tech Stack
 
@@ -116,10 +119,6 @@ src/
 This project explores the boundary between determinism and apparent randomness. Chaotic systems are entirely deterministic—given initial conditions, their trajectory is fixed—yet they exhibit sensitivity to initial conditions that makes long-term prediction impossible.
 
 The "ink" we write with is the observer's attention. The "database" is the mathematical phase-space where all possible states exist simultaneously. Our interaction—adjusting parameters, watching trajectories—is the "flicker" that selects which states manifest visually.
-
-## 📄 License
-
-MIT
 
 ---
 

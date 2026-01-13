@@ -1,5 +1,9 @@
 # Walkthrough: The Record
 
+> **🤖 This project was fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
+>
+> See [Interactive Attractor Controls.md](../Interactive%20Attractor%20Controls.md) for the complete conversation log.
+
 **The Record** is a conceptual web application that visualizes chaotic attractors—mathematical systems that model deterministic chaos. Each attractor traces patterns through phase-space that never repeat yet never escape their bounds.
 
 ## Core Concepts
