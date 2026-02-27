@@ -36,7 +36,7 @@ An interactive visualization of chaotic attractors — mathematical systems that
 
 ```bash
 # Clone the repository
-git clone https://github.com/StanHizni/the-record.git
+git clone https://github.com/stanislavhi/the-record.git
 cd the-record
 
 # Install dependencies
