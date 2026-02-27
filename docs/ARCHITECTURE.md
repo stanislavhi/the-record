@@ -1,4 +1,4 @@
-# Architecture: The Record
+# Architecture — The Record
 
 > **🤖 This project was fully generated with Claude Opus 4.5 and Gemini 3.0 — Chat only.**
 >
@@ -6,121 +6,147 @@
 
 ## Design Philosophy
 
-The Record embodies the philosophical question: *"If the Database is the atemporal record of all computation, and our thought is the flicker that writes to it, what is the color of the ink?"*
+The Record embodies a philosophical question:
 
-- **The Database** — A persistent, reacting grid that remembers
-- **The Ink** — Energy expended by the user to change state
-- **The Flicker** — The transient nature of interaction
+> *"If the Database (God) is the atemporal record of all computation, and our thought is the flicker (IS/IS-NOT) that writes to it, what is the color of the ink?"*
+
+| Metaphor | Implementation |
+|----------|----------------|
+| **The Database** | The persistent HDR canvas grid — it remembers everything |
+| **The Flicker** | Each point's single-step computation — IS or IS-NOT |
+| **The Ink** | The glowing trails left by attractor points on the grid |
+
+---
 
 ## Tech Stack
 
 | Layer | Technology | Purpose |
-|-------|------------|---------|
-| Framework | React 19 | Component architecture, state management |
-| Language | TypeScript 5.9 | Type safety |
-| Build | Vite 7 | Fast development and bundling |
-| Styling | Tailwind CSS 4 | Utility-first styling |
-| Rendering | HTML5 Canvas | High-performance 2D graphics |
+|-------|-----------|---------|
+| UI Framework | React 19 | Component architecture, reactive state |
+| Language | TypeScript 5.9 | Type safety across all modules |
+| Build Tool | Vite 7 | Fast HMR and production bundling |
+| Styling | Tailwind CSS 4 | Utility-first, PostCSS-based |
+| Rendering | HTML5 Canvas | High-performance 2D graphics (no WebGL) |
+| Font | JetBrains Mono | Monospace/terminal aesthetic |
+
+---
 
 ## Directory Structure
 
 ```
-src/
-├── components/
-│   ├── TheVoid.tsx              # Main canvas & overlay component
-│   ├── HUD.tsx                  # Heads-up display (optional)
-│   ├── constants.ts             # Attractor configurations
-│   ├── types.ts                 # TypeScript interfaces
-│   ├── attractors/
-│   │   └── attractorCalculations.ts  # Physics calculations per attractor
-│   └── utils/
-│       ├── colorUtils.ts        # RGB ↔ HSL conversions
-│       └── projection.ts        # 3D → 2D isometric projection
-├── App.tsx                      # Root component
-├── main.tsx                     # Entry point
-└── index.css                    # Global styles
+the-record/
+├── public/
+│   ├── favicon.svg           # Custom Lorenz-butterfly favicon
+│   └── og-image.png          # Social preview image (1200×630)
+├── src/
+│   ├── components/
+│   │   ├── TheVoid.tsx        # Main canvas & React overlay
+│   │   ├── HUD.tsx            # Heads-up display (currently off)
+│   │   ├── constants.ts       # Attractor configurations & constants
+│   │   ├── types.ts           # Shared TypeScript interfaces
+│   │   ├── attractors/
+│   │   │   └── attractorCalculations.ts  # Physics per type
+│   │   └── utils/
+│   │       ├── colorUtils.ts  # RGB ↔ HSL conversions
+│   │       └── projection.ts  # 3D → 2D isometric projection
+│   ├── App.tsx                # Root component
+│   ├── main.tsx               # Entry point
+│   └── index.css              # Global styles & CSS variables
+├── docs/                      # Documentation
+├── index.html                 # HTML shell with full meta tags
+└── vite.config.ts
 ```
+
+---
 
 ## Core Components
 
-### TheVoid.tsx
-The main component handling:
-- Canvas setup and animation loop
-- Grid state (2D array of intensity values)
-- Attractor physics simulation
-- Interactive overlay rendering
-- Mouse/touch input handling
+### `TheVoid.tsx`
+The central component — runs the animation loop, manages all state, and renders both the canvas and the React overlay (controls).
 
-**Key State:**
+**Refs (frame-safe mutable state):**
 ```typescript
-const grid = useRef<number[][]>([]);           // Intensity values
-const gridColors = useRef<(RGB | null)[][]>([]); // Color per cell
-const attractors = useRef<Attractor[]>([]);    // Active attractors
-const particles = useRef<Particle[]>([]);      // User-spawned particles
-const energy = useRef<number>(100);            // Available ink
+const grid        = useRef<number[][]>([]);         // Cell intensity [0–1]
+const gridColors  = useRef<(RGB | null)[][]>([]);   // Cell color
+const attractors  = useRef<Attractor[]>([]);         // All 10 attractors
+const particles   = useRef<Particle[]>([]);          // User ink particles
+const energy      = useRef<number>(100);             // Remaining ink energy
 ```
 
-### constants.ts
-Defines all attractor configurations:
-- Initial positions
-- System parameters (sigma, rho, beta, etc.)
-- Default scales and rotations
-- Color assignments
+**React state (triggers re-renders):**
+```typescript
+const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
+const [, forceUpdate] = useState(0); // Used after point add/remove
+```
 
-### attractorCalculations.ts
-Pure functions for computing attractor dynamics:
+---
+
+### `constants.ts`
+All attractor configurations and rendering constants:
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `GRID_SIZE` | `2` | Pixel size per grid cell (HD mode) |
+| `DECAY_RATE` | `0.9995` | How slowly trail intensity fades |
+| `SUB_STEPS` | `20` | Physics iterations per animation frame |
+| `ENERGY_COST` | `0.5` | Ink cost per user particle |
+| `ENERGY_REGEN` | `0.1` | Ink regen per idle frame |
+
+---
+
+### `attractorCalculations.ts`
+Stateless physics functions:
 ```typescript
 calculateAttractorStep(type, point, params) → { dx, dy, dz }
-isPointStable(point) → boolean
-resetPoint(point) → void
+isPointStable(point)                        → boolean
+resetPoint(point)                           → void
+```
+Each attractor type maps to a set of differential equations (continuous) or a recurrence relation (discrete, e.g. Hénon).
+
+---
+
+### `projection.ts`
+Converts a 3D attractor point into 2D canvas coordinates:
+
+```
+[x, y, z]
+   → rotate by attractor.rotation (Euler X/Y/Z)
+   → apply global isometric camera (45° Y, 35.26° X)
+   → scale by attractor.scale
+   → translate by attractor.offset + canvas center
+   → [px, py]
 ```
 
-### projection.ts
-3D to 2D projection with:
-- Per-object rotation (X, Y, Z Euler angles)
-- Global isometric camera (45° Y, 35.26° X)
-- Scale and offset transforms
+---
+
+### `colorUtils.ts`
+Three conversion helpers: `rgbToHsl`, `hslToRgb`, `rgbToHex`, `hexToRgb`.
+Used to generate the coherent HSL gradient swarms (±0.02 hue shift per point).
+
+---
 
 ## Rendering Pipeline
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Animation Frame                           │
-├─────────────────────────────────────────────────────────────┤
-│  1. Clear canvas (partial: rgba(10,10,10,0.35))             │
-│  2. For each attractor:                                      │
-│     a. Set clipping region (tile bounds)                    │
-│     b. For each point (10 per attractor):                   │
-│        - Calculate 20 sub-steps                             │
-│        - Project 3D → 2D                                    │
-│        - Draw line segments                                 │
-│        - Update grid cells                                  │
-│     c. Restore clipping                                     │
-│  3. Render grid (colored cells with intensity)              │
-│  4. Render particles (user-spawned)                         │
-│  5. Request next frame                                       │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    requestAnimationFrame                   │
+├──────────────────────────────────────────────────────────┤
+│  1. Partial clear — rgba(10,10,10, 0.35)                  │
+│  2. For each attractor (10 total):                        │
+│     a. strokeRect border + beginPath clip                 │
+│     b. For each point (10 per attractor):                 │
+│        ├─ 20 sub-steps of physics                        │
+│        ├─ project() → canvas coords                      │
+│        ├─ draw line segment with glow (shadowBlur)        │
+│        └─ increment grid cell at projected position       │
+│     c. ctx.restore() (remove clip)                        │
+│  3. Decay & paint grid cells (colored fading trails)      │
+│  4. Render user particles (ink)                           │
+│  5. Loop                                                  │
+└──────────────────────────────────────────────────────────┘
 ```
 
-## Data Flow
-
-```
-User Input (mouse/touch)
-        ↓
-   TheVoid.tsx
-        ↓
-┌───────┴───────┐
-│               │
-Particles    Attractors
-(user ink)   (chaos engines)
-│               │
-└───────┬───────┘
-        ↓
-     Grid State
-   (The Database)
-        ↓
-   Canvas Render
-```
+---
 
 ## Type Definitions
 
@@ -129,7 +155,7 @@ interface Attractor {
     type: AttractorType;
     points: Point[];
     color: RGB;
-    params: Record<string, number>;
+    params: Record<string, number>;  // sigma, rho, beta, dt, etc.
     scale: number;
     offset: { x: number; y: number };
     rotation?: { x: number; y: number; z: number };
@@ -143,26 +169,17 @@ interface Point {
     color: RGB;
 }
 
-interface RGB {
-    r: number;
-    g: number;
-    b: number;
-}
+type AttractorType =
+    'lorenz' | 'rossler' | 'henon' | 'chua' | 'sprott' |
+    'four_wing' | 'rabinovich' | 'halvorsen' | 'dadras' | 'aizawa';
 ```
 
-## Configuration Constants
-
-| Constant | Value | Purpose |
-|----------|-------|---------|
-| `GRID_SIZE` | 2 | Pixel size of grid cells |
-| `DECAY_RATE` | 0.9995 | How fast grid intensity fades |
-| `SUB_STEPS` | 20 | Physics steps per frame |
-| `ENERGY_COST` | 0.5 | Ink cost per particle |
-| `ENERGY_REGEN` | 0.1 | Ink regen per frame |
+---
 
 ## Future Considerations
 
-- **Web Workers** — Move physics to worker thread for better performance
-- **WebGL** — GPU-accelerated rendering for larger simulations
-- **Audio** — Generative sound based on attractor states
-- **Persistence** — Save/load grid and attractor configurations
+- **Web Workers** — Off-thread physics for smoother frame rates
+- **WebGL / WebGPU** — GPU-accelerated rendering for larger point counts
+- **Audio** — Generative sound tied to attractor state variables
+- **Persistence** — Save/restore attractor configurations via URL hash or localStorage
+- **Touch Support** — Joystick and controls adapted for mobile

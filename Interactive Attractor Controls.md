@@ -1,6 +1,68 @@
-# Chat Conversation
+# Interactive Attractor Controls — Development Log
 
-Note: _This is purely the output of the chat conversation and does not contain any raw data, codebase snippets, etc. used to generate the output._
+> *"If the Database (God) is the atemporal record of all computation, and our thought is the flicker (IS/IS-NOT) that writes to it, what is the color of the ink?"*
+
+This document is the **complete, unedited AI conversation log** for the development of [The Record](README.md) — an interactive visualization of chaotic attractors built entirely through chat, using Claude Opus 4.5 and Gemini 3.0.
+
+> **🤖 No manual code was written. Every line of code was generated through natural language prompts.**
+
+---
+
+## Project Overview
+
+**The Record** is a React + TypeScript + Canvas application that renders 10 strange attractors in real time:
+
+| # | Attractor | Color |
+|---|-----------|-------|
+| 1 | Lorenz | ⬜ White |
+| 2 | Rössler | 🟡 Gold |
+| 3 | Hénon | 🩷 Hot Pink |
+| 4 | Chua (Double Scroll) | 🟠 Orange |
+| 5 | Sprott | 🔵 Cyan |
+| 6 | Four-Wing | 🟢 Green |
+| 7 | Rabinovich-Fabrikant | 🩵 Mint |
+| 8 | Halvorsen | 🩷 Magenta |
+| 9 | Dadras | 💜 Violet |
+| 10 | Aizawa | 🟠 Amber |
+
+---
+
+## Development Milestones
+
+| Phase | Key Changes |
+|-------|-------------|
+| **🌱 Foundation** | Project scaffolded with Vite + React + TypeScript + Tailwind CSS |
+| **🎨 Initial Canvas** | First canvas renderer, Lorenz attractor plotted on a dark grid |
+| **➕ More Attractors** | Added Rössler, Hénon, Chua, then expanded to 10+ systems |
+| **🔁 Stability** | Auto-reset for diverging points, NaN/Infinity guards, scale tuning |
+| **🏗️ Grid Layout** | 5×2 tiled grid with clipping; each attractor contained in its cell |
+| **🌈 Color System** | Coherent HSL gradient swarms (10 points per attractor) |
+| **📐 Isometric Projection** | Global 45° isometric camera applied via `utils/projection.ts` |
+| **🕹️ Interactive Controls** | Per-tile hover panel: joystick rotation, scale slider, speed slider |
+| **➕ Point Controls** | Add/remove simulation points (1–50) per attractor |
+| **🎨 Color Picker** | Real-time hue change with coherent gradient recalculation |
+| **🚿 Flush Button** | Clear grid trail history for individual tiles |
+| **📦 Refactor** | Extracted physics to `attractorCalculations.ts`, utils to `colorUtils.ts` & `projection.ts` |
+| **📚 Documentation** | README, ARCHITECTURE.md, WALKTHROUGH.md, CHANGELOG.md |
+
+---
+
+## Tech Stack
+
+- **React 19** + **TypeScript 5.9** — UI and type safety
+- **Vite 7** — Build tooling
+- **Tailwind CSS 4** — Styling
+- **HTML5 Canvas** — All rendering (no WebGL, no Three.js)
+
+---
+
+## Raw Conversation Log
+
+The full, unedited conversation follows. It includes all prompts, AI responses, and references to tool calls made during development.
+
+_Note: This log contains only text output — it does not include raw file contents or codebase diffs._
+
+---
 
 ### User Input
 
