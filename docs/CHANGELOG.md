@@ -8,6 +8,76 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
+## [1.3.0] — 2026-04-18 — Wave 2: Feature add-ons + Theming polish
+
+Layers Wave 2 onto Wave 1: info tooltips, palette presets, randomizer, PNG/WebM export, a narrative tour, and a light-theme tuning pass.
+
+### Added
+- **Info tooltips** — `InfoTooltip.tsx` reveals equations, discoverer/year, Lyapunov exponent, and a short blurb on tile-title hover or focus
+- **Per-tile randomizer** — 🎲 button in `ControlPanel` next to Flush; randomizes color, rotation, scale, and speed within the bounds in `utils/randomParams.ts`
+- **Color palette presets** — Toolbar dropdown with six presets (Original, Neon, Pastel, Mono, Warm, Cold) applied across all 10 attractors
+- **Global randomize** — Toolbar "🎲 All" button, also bound to `R`
+- **PNG snapshot** — Toolbar "PNG" button (and `P`) saves `canvas.toDataURL('image/png')` as a timestamped file
+- **WebM recorder** — Toolbar "● Rec / ■ Stop" button (and `V`) wraps `canvas.captureStream()` + `MediaRecorder`; codec falls back from `vp9` to default `webm` when unsupported
+- **Narrative tour** — `TourModal.tsx` walks through each attractor with name, equations, Lyapunov, and blurb; triggered by Toolbar "Tour" button or `N`; `← →` navigate, `Esc` closes
+- **Theme-aware canvas tokens** — `ThemeTokens` now includes `voidRGB` (for fade-alpha math) and `rectStroke` (so tile borders read against a white bg)
+
+### Changed
+- **Light theme tuning** — `glow 3 → 2`, `trailAlpha 0.65 → 0.72`, `gridIntensity 0.45 → 0.6`, `fadeAlpha 0.18 → 0.12`, and `inkLow` to a slightly deeper magenta. Trails now stay visible against the near-white void without looking harsh.
+- **`TheVoid.tsx`** — Reads `tokens.voidRGB` and `tokens.rectStroke` per frame instead of hard-coded strings, so theme swaps propagate to the canvas without reloading
+- **`Toolbar.tsx`** — Now flex-wraps with a `max-w-[95vw]` clamp so the expanded button set fits on narrow screens
+- **`HelpModal.tsx`** — Existing `R`/`P`/`V`/`N` rows are now backed by working handlers
+
+### Fixed
+- Tile title is now a real `<button>` with a theme-aware focus outline and an `aria-describedby` link to its tooltip
+
+---
+
+## [1.2.0] — 2026-04-17 — Wave 1: Refactor + Visual Polish + UX Reach
+
+A large foundational pass on `claude/refactor-visual-improvements-cP2Sr`. Splits the 533-line `TheVoid.tsx` monolith into focused components and hooks, rebuilds the control surface, adds a global toolbar, keyboard shortcuts, touch support, a stats HUD, a help modal, and a full dark/light CSS-variable theme.
+
+### Added
+- **Component split** — `AttractorGrid.tsx`, `AttractorTile.tsx`, `ControlPanel.tsx`, `Joystick.tsx`, `StatsHUD.tsx`, `HelpModal.tsx`, `Toolbar.tsx`, `IntroOverlay.tsx`, `PausedOverlay.tsx`, `ErrorBoundary.tsx`
+- **Custom hooks** — `useAnimationFrame` (RAF with pause), `usePointerDrag` (Pointer Events), `useKeyboardShortcuts`, `useTheme` (localStorage + `prefers-color-scheme`), `useFPS` (rolling 500 ms window), `useBreakpoint` (2 / 3 / 5 column responsive grid)
+- **Global toolbar** — Pause, Reset All, Theme toggle, Stats toggle, Help, anchored to the bottom center and excluded from the canvas merge handler
+- **Keyboard shortcuts** — `Space` pause, `Esc` reset all, `?`/`H` help, `S` stats, `T` theme
+- **Touch support** — Pointer Events across joystick and canvas click; joystick uses `setPointerCapture` and window-level listeners for robust drag tracking
+- **Stats HUD** — FPS / total points / energy bar / phase indicator, resurrected from the old `HUD.tsx` and toggleable
+- **Help modal** — Keyboard shortcut legend with `<kbd>` styling
+- **Paused overlay** — Dim scrim + PAUSED badge when the simulation is paused
+- **Loading state** — Three pulsing dots on the "CLICK TO MERGE" intro
+- **Joystick needle** — Rotating angle indicator + knob tilt for visual feedback
+- **Error boundary** — "RECORD CORRUPTED" fallback with reload button around the canvas
+- **Dark + light themes** — CSS custom properties on `:root[data-theme="..."]`, Tailwind colors mapped to the variables, canvas reads tokens via `getThemeTokens()` on every frame
+- **Typography + z-index tokens** — `label`/`value`/`title` fontSize scale in `tailwind.config.js` and a named `zIndex` scale (`canvas`/`overlay`/`hud`/`toolbar`/`modal`)
+- **Config objects** — `LAYOUT`, `CANVAS_STYLE`, `Z_INDEX`, `KEYBINDINGS`, `PERF_PRESETS`, `POINT_LIMITS`, `SPEED_LIMITS`, `SCALE_LIMITS` in `constants.ts`
+- **Scaffolded utilities (Wave 2/3)** — `utils/palettes.ts` (6 palette presets), `utils/randomParams.ts` (bounded randomizer), `utils/exportCanvas.ts` (PNG snapshot + `CanvasRecorder`), `attractors/attractorInfo.ts` (equations, Lyapunov, discoverer metadata for all 10 attractors)
+
+### Changed
+- **`TheVoid.tsx`** — Rewritten as a slim orchestrator (~440 lines vs. 533), now just holds refs/state and wires hooks + handlers
+- **`App.tsx`** — Reduced to `<ErrorBoundary><TheVoid /></ErrorBoundary>`; removed `hudRef` prop drilling
+- **Rendering pipeline** — Reads theme tokens per frame, short-circuits on pause/intro, drives FPS tick
+- **State model** — Replaced `forceUpdate` anti-pattern with proper state + ref syncing via `useEffect`
+- **`tailwind.config.js`** — Colors now reference CSS variables (`var(--color-void)` etc.); added `fontSize`, `zIndex`, and `transitionProperty.base` tokens
+- **`src/index.css`** — Added `:root[data-theme="dark"]` / `[data-theme="light"]` variable blocks, `@keyframes pulse-dot`, `@keyframes fade-in`, styled range and color inputs with hover scale
+
+### Removed
+- **`src/components/HUD.tsx`** — Deleted; functionality moved to `StatsHUD.tsx`
+- **Dead `AttractorType` entries** — `tsucs`, `thomas`, `chen` pruned from `types.ts` and their calculators removed from `attractorCalculations.ts`
+- **`MouseState` type** — No longer referenced after the hook refactor
+- **`forceUpdate` anti-pattern** — Replaced with idiomatic state updates
+
+### Fixed
+- React 19 `react-hooks/refs` violation in `useAnimationFrame.ts` — ref syncing moved inside `useEffect`
+- React 19 `react-hooks/purity` violation in `useFPS.ts` — `performance.now()` no longer called during render
+- React 19 `react-hooks/refs` violation when initializing state from a ref — `initialAttractors` snapshot drives both the ref and the derived `speeds` state
+
+### Notes
+- Wave 2 (info tooltips, narrative tour, randomizer + palette presets, PNG/WebM export, light-theme glow tuning) and Wave 3 (generative audio synth, performance-mode toggle, Web Worker physics offload) are scaffolded but not yet wired.
+
+---
+
 ## [1.1.0] — 2026-02-27 — Repo Polish
 
 ### Added

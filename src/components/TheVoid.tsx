@@ -1,37 +1,179 @@
-import React, { useRef, useEffect, useState } from 'react';
-import type { HUDRef } from './HUD';
-import type { Attractor, Particle, OverlayItem, RGB } from './types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { Attractor, OverlayItem, Particle, RGB, Theme } from './types';
 import {
-    GRID_SIZE,
+    CANVAS_STYLE,
     DECAY_RATE,
     ENERGY_COST,
     ENERGY_REGEN,
+    GRID_SIZE,
     INK_COLOR,
+    LAYOUT,
+    POINT_LIMITS,
     SUB_STEPS,
-    createInitialAttractors
+    createInitialAttractors,
 } from './constants';
-import { rgbToHsl, hslToRgb, rgbToHex, hexToRgb } from './utils/colorUtils';
+import { hexToRgb, hslToRgb, rgbToHsl } from './utils/colorUtils';
 import { project } from './utils/projection';
 import { calculateAttractorStep, isPointStable, resetPoint } from './attractors/attractorCalculations';
+import AttractorGrid from './AttractorGrid';
+import StatsHUD from './StatsHUD';
+import HelpModal from './HelpModal';
+import Toolbar from './Toolbar';
+import IntroOverlay from './IntroOverlay';
+import PausedOverlay from './PausedOverlay';
+import TourModal from './TourModal';
+import { useBreakpoint, getGridCols } from '../hooks/useBreakpoint';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useTheme } from '../hooks/useTheme';
+import { useFPS } from '../hooks/useFPS';
+import { getThemeTokens } from '../utils/themeTokens';
+import { PALETTES, type PaletteName } from '../utils/palettes';
+import { randomizeAttractor } from '../utils/randomParams';
+import { snapshotPNG, CanvasRecorder, downloadBlob } from '../utils/exportCanvas';
 
-interface TheVoidProps {
-    hudRef: React.RefObject<HUDRef | null>;
-}
+const buildOverlayItems = (attractors: Attractor[]): OverlayItem[] =>
+    attractors
+        .filter((a) => a.rect)
+        .map((attractor, idx) => ({
+            index: idx,
+            type: attractor.type,
+            rect: attractor.rect!,
+            rotation: attractor.rotation ?? { x: 0, y: 0, z: 0 },
+            color: attractor.color,
+            scale: attractor.scale,
+            pointCount: attractor.points.length,
+        }));
 
-const TheVoid: React.FC<TheVoidProps> = ({ hudRef }) => {
-    const particles = useRef<Particle[]>([]);
+const TheVoid = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
-    const [, forceUpdate] = useState(0); // Force re-render trigger
-
+    const particles = useRef<Particle[]>([]);
     const grid = useRef<number[][]>([]);
     const gridColors = useRef<(RGB | null)[][]>([]);
-    const energy = useRef<number>(100);
-    const entropy = useRef<number>(0);
+    const energyRef = useRef<number>(100);
     const mouse = useRef<{ x: number; y: number; active: boolean }>({ x: 0, y: 0, active: false });
     const lastPos = useRef<{ x: number; y: number } | null>(null);
-    const isIntro = useRef<boolean>(true);
-    const attractors = useRef<Attractor[]>(createInitialAttractors());
+    const isIntroRef = useRef<boolean>(true);
+    const pausedRef = useRef<boolean>(false);
+    const themeRef = useRef<Theme>('dark');
+    const [initialAttractors] = useState(() => createInitialAttractors());
+    const attractors = useRef<Attractor[]>(initialAttractors);
+    const animationRef = useRef<number>(0);
+    const colsRef = useRef(0);
+    const rowsRef = useRef(0);
+    const recorderRef = useRef<CanvasRecorder | null>(null);
+
+    const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
+    const [speeds, setSpeeds] = useState<number[]>(() =>
+        initialAttractors.map((a) => a.params.dt ?? 0.01)
+    );
+    const [paused, setPaused] = useState(false);
+    const [intro, setIntro] = useState(true);
+    const [statsVisible, setStatsVisible] = useState(false);
+    const [helpOpen, setHelpOpen] = useState(false);
+    const [phase, setPhase] = useState('AWAITING MERGE');
+    const [energyState, setEnergyState] = useState(100);
+    const [palette, setPalette] = useState<PaletteName>('original');
+    const [recording, setRecording] = useState(false);
+    const [tourOpen, setTourOpen] = useState(false);
+    const [tourIndex, setTourIndex] = useState(0);
+
+    const { theme, toggleTheme } = useTheme();
+    const breakpoint = useBreakpoint();
+    const { fps, tick: tickFPS } = useFPS();
+
+    useEffect(() => { themeRef.current = theme; }, [theme]);
+    useEffect(() => { pausedRef.current = paused; }, [paused]);
+    useEffect(() => { isIntroRef.current = intro; }, [intro]);
+
+    const totalPoints = useMemo(
+        () => overlayItems.reduce((sum, it) => sum + it.pointCount, 0),
+        [overlayItems]
+    );
+
+    const tourTypes = useMemo(
+        () => initialAttractors.map((a) => a.type),
+        [initialAttractors]
+    );
+
+    const syncOverlay = useCallback(() => {
+        setOverlayItems(buildOverlayItems(attractors.current));
+    }, []);
+
+    const resizeCanvas = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        colsRef.current = Math.ceil(window.innerWidth / GRID_SIZE);
+        rowsRef.current = Math.ceil(window.innerHeight / GRID_SIZE);
+        grid.current = Array(colsRef.current)
+            .fill(0)
+            .map(() => Array(rowsRef.current).fill(0));
+        gridColors.current = Array(colsRef.current)
+            .fill(null)
+            .map(() => Array(rowsRef.current).fill(null));
+
+        const count = attractors.current.length;
+        const gridCols = getGridCols(breakpoint);
+        const gridRows = Math.ceil(count / gridCols);
+
+        const availableW = window.innerWidth - LAYOUT.marginX * 2;
+        const availableH = window.innerHeight - (LAYOUT.marginTop + LAYOUT.marginBottom);
+        const cellW = (availableW - LAYOUT.gap * (gridCols - 1)) / gridCols;
+        const cellH = (availableH - LAYOUT.gap * (gridRows - 1)) / gridRows;
+
+        attractors.current.forEach((attractor, index) => {
+            const col = index % gridCols;
+            const row = Math.floor(index / gridCols);
+            const cellX = LAYOUT.marginX + col * (cellW + LAYOUT.gap);
+            const cellY = LAYOUT.marginTop + row * (cellH + LAYOUT.gap);
+            attractor.rect = { x: cellX, y: cellY, w: cellW, h: cellH };
+            attractor.offset = {
+                x: cellX + cellW / 2 - window.innerWidth / 2,
+                y: cellY + cellH / 2 - window.innerHeight / 2,
+            };
+        });
+
+        syncOverlay();
+    }, [breakpoint, syncOverlay]);
+
+    useEffect(() => {
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        return () => window.removeEventListener('resize', resizeCanvas);
+    }, [resizeCanvas]);
+
+    const spawnParticle = useCallback((x: number, y: number, vx: number, vy: number, burst = false, chaosColor?: RGB) => {
+        if (!burst && !chaosColor && energyRef.current < 5) return;
+        if (!burst && !chaosColor) energyRef.current -= ENERGY_COST;
+        particles.current.push({
+            x,
+            y,
+            vx: vx * 0.5 + (Math.random() - 0.5) * 2,
+            vy: vy * 0.5 + (Math.random() - 0.5) * 2,
+            life: burst ? 2.0 : 1.5,
+            color: chaosColor,
+        });
+    }, []);
+
+    const triggerMerge = useCallback(() => {
+        if (!isIntroRef.current) return;
+        isIntroRef.current = false;
+        setIntro(false);
+        setPhase('PHASE 10: ACTIVE');
+        for (let i = 0; i < 150; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 15 + 5;
+            spawnParticle(
+                window.innerWidth / 2,
+                window.innerHeight / 2,
+                Math.cos(angle) * speed,
+                Math.sin(angle) * speed,
+                true
+            );
+        }
+    }, [spawnParticle]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -39,315 +181,259 @@ const TheVoid: React.FC<TheVoidProps> = ({ hudRef }) => {
         const ctx = canvas.getContext('2d', { alpha: false });
         if (!ctx) return;
 
-        let animationFrameId: number;
-        let cols = 0;
-        let rows = 0;
-
-        if (hudRef.current) {
-            hudRef.current.updatePhase("AWAITING MERGE");
-        }
-
-        const initGrid = () => {
-            cols = Math.ceil(window.innerWidth / GRID_SIZE);
-            rows = Math.ceil(window.innerHeight / GRID_SIZE);
-            grid.current = Array(cols).fill(0).map(() => Array(rows).fill(0));
-            gridColors.current = Array(cols).fill(null).map(() => Array(rows).fill(null));
-        };
-
-        const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            initGrid();
-
-            const count = attractors.current.length;
-            const gridCols = 5;
-            const gridRows = Math.ceil(count / gridCols);
-
-            const marginX = 20;
-            const marginTop = 30;
-            const marginBottom = 20;
-
-            const availableW = window.innerWidth - (marginX * 2);
-            const availableH = window.innerHeight - (marginTop + marginBottom);
-
-            const GAP = 30;
-            const cellW = (availableW - (GAP * (gridCols - 1))) / gridCols;
-            const cellH = (availableH - (GAP * (gridRows - 1))) / gridRows;
-
-            const newItems: OverlayItem[] = [];
-            attractors.current.forEach((attractor, index) => {
-                const col = index % gridCols;
-                const row = Math.floor(index / gridCols);
-
-                const cellX = marginX + (col * (cellW + GAP));
-                const cellY = marginTop + (row * (cellH + GAP));
-
-                const cx = cellX + cellW / 2;
-                const cy = cellY + cellH / 2;
-
-                attractor.rect = { x: cellX, y: cellY, w: cellW, h: cellH };
-                attractor.offset = {
-                    x: cx - window.innerWidth / 2,
-                    y: cy - window.innerHeight / 2
-                };
-
-                newItems.push({
-                    index,
-                    type: attractor.type,
-                    rect: attractor.rect,
-                    rotation: attractor.rotation || { x: 0, y: 0, z: 0 },
-                    color: attractor.color,
-                    scale: attractor.scale
-                });
-            });
-            setOverlayItems(newItems);
-        };
-
-        resizeCanvas();
-
-        const spawnParticle = (x: number, y: number, vx: number, vy: number, burst = false, chaosColor?: RGB) => {
-            if (!burst && !chaosColor && energy.current < 5) return;
-
-            if (!burst && !chaosColor) {
-                energy.current -= ENERGY_COST;
-            }
-
-            particles.current.push({
-                x, y,
-                vx: vx * 0.5 + (Math.random() - 0.5) * 2,
-                vy: vy * 0.5 + (Math.random() - 0.5) * 2,
-                life: burst ? 2.0 : 1.5,
-                color: chaosColor
-            });
-        };
-
-        const triggerMerge = () => {
-            isIntro.current = false;
-            if (hudRef.current) {
-                hudRef.current.updatePhase("PHASE 10: ACTIVE");
-            }
-            for (let i = 0; i < 150; i++) {
-                const angle = Math.random() * Math.PI * 2;
-                const speed = Math.random() * 15 + 5;
-                spawnParticle(
-                    window.innerWidth / 2,
-                    window.innerHeight / 2,
-                    Math.cos(angle) * speed,
-                    Math.sin(angle) * speed,
-                    true
-                );
-            }
-        };
+        let energyStateTick = 0;
 
         const render = () => {
-            ctx.fillStyle = 'rgba(10, 10, 10, 0.35)';
+            if (pausedRef.current) {
+                animationRef.current = requestAnimationFrame(render);
+                return;
+            }
+            tickFPS();
+            const tokens = getThemeTokens(themeRef.current);
+
+            ctx.fillStyle = `rgba(${tokens.voidRGB}, ${tokens.fadeAlpha})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            if (isIntro.current) {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '24px "JetBrains Mono"';
-                ctx.textAlign = 'center';
-                const alpha = (Math.sin(Date.now() / 500) + 1) / 2 * 0.5 + 0.5;
-                ctx.globalAlpha = alpha;
-                ctx.fillText("CLICK TO MERGE", canvas.width / 2, canvas.height / 2);
-                ctx.globalAlpha = 1.0;
-            } else {
-                if (energy.current < 100) energy.current += ENERGY_REGEN;
-                if (energy.current > 100) energy.current = 100;
+            if (isIntroRef.current) {
+                animationRef.current = requestAnimationFrame(render);
+                return;
+            }
 
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
+            if (energyRef.current < 100) energyRef.current += ENERGY_REGEN;
+            if (energyRef.current > 100) energyRef.current = 100;
+            energyStateTick += 1;
+            if (energyStateTick % 30 === 0) setEnergyState(energyRef.current);
 
-                attractors.current.forEach(attractor => {
-                    if (attractor.rect) {
-                        ctx.strokeStyle = `rgba(50, 50, 50, 0.5)`;
-                        ctx.lineWidth = 1;
-                        ctx.strokeRect(attractor.rect.x, attractor.rect.y, attractor.rect.w, attractor.rect.h);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const cols = colsRef.current;
+            const rows = rowsRef.current;
 
-                        ctx.save();
+            attractors.current.forEach((attractor) => {
+                if (attractor.rect) {
+                    ctx.strokeStyle = tokens.rectStroke;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(attractor.rect.x, attractor.rect.y, attractor.rect.w, attractor.rect.h);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(attractor.rect.x, attractor.rect.y, attractor.rect.w, attractor.rect.h);
+                    ctx.clip();
+                }
+
+                attractor.points.forEach((pt) => {
+                    if (attractor.type !== 'henon') {
                         ctx.beginPath();
-                        ctx.rect(attractor.rect.x, attractor.rect.y, attractor.rect.w, attractor.rect.h);
-                        ctx.clip();
+                        ctx.strokeStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, ${tokens.trailAlpha})`;
+                        ctx.lineWidth = CANVAS_STYLE.trailLineWidth;
+                        ctx.lineCap = 'round';
+                        ctx.shadowBlur = tokens.glow;
+                        ctx.shadowColor = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 1.0)`;
                     }
 
-                    attractor.points.forEach(pt => {
-                        if (attractor.type !== 'henon') {
-                            ctx.beginPath();
-                            ctx.strokeStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 0.5)`;
-                            ctx.lineWidth = 2.5;
-                            ctx.lineCap = 'round';
-                            ctx.shadowBlur = 10;
-                            ctx.shadowColor = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 1.0)`;
-                        }
+                    const prevP = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
+                    if (attractor.type !== 'henon') ctx.moveTo(prevP.x, prevP.y);
 
-                        const prevP = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
-                        if (attractor.type !== 'henon') {
-                            ctx.moveTo(prevP.x, prevP.y);
-                        }
-
-                        for (let step = 0; step < SUB_STEPS; step++) {
-                            if (attractor.type === 'henon') {
-                                if (step % 20 === 0) {
-                                    calculateAttractorStep(attractor.type, pt, attractor.params);
-                                }
-                            } else {
-                                const delta = calculateAttractorStep(attractor.type, pt, attractor.params);
-
-                                if (!isPointStable(pt)) {
-                                    resetPoint(pt);
-                                }
-                                pt.x += delta.dx;
-                                pt.y += delta.dy;
-                                pt.z += delta.dz;
+                    for (let step = 0; step < SUB_STEPS; step++) {
+                        if (attractor.type === 'henon') {
+                            if (step % CANVAS_STYLE.henonStepInterval === 0) {
+                                calculateAttractorStep(attractor.type, pt, attractor.params);
                             }
+                        } else {
+                            const delta = calculateAttractorStep(attractor.type, pt, attractor.params);
+                            if (!isPointStable(pt)) resetPoint(pt);
+                            pt.x += delta.dx;
+                            pt.y += delta.dy;
+                            pt.z += delta.dz;
+                        }
 
-                            const p = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
+                        const p = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
 
-                            if (attractor.type === 'henon') {
-                                if (step % 20 === 0) {
-                                    const gx = Math.floor(p.x / GRID_SIZE);
-                                    const gy = Math.floor(p.y / GRID_SIZE);
-                                    if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
-                                        grid.current[gx][gy] = Math.min(grid.current[gx][gy] + 0.1, 1.0);
-                                        gridColors.current[gx][gy] = pt.color;
-                                    }
-                                    ctx.shadowBlur = 10;
-                                    ctx.fillStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 1.0)`;
-                                    ctx.fillRect(p.x, p.y, 4, 4);
-                                    ctx.shadowBlur = 0;
+                        if (attractor.type === 'henon') {
+                            if (step % CANVAS_STYLE.henonStepInterval === 0) {
+                                const gx = Math.floor(p.x / GRID_SIZE);
+                                const gy = Math.floor(p.y / GRID_SIZE);
+                                if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
+                                    grid.current[gx][gy] = Math.min(
+                                        grid.current[gx][gy] + CANVAS_STYLE.henonGridBoost,
+                                        1.0
+                                    );
+                                    gridColors.current[gx][gy] = pt.color;
                                 }
-                            } else {
-                                ctx.lineTo(p.x, p.y);
-                                if (step % 2 === 0) {
-                                    const gx = Math.floor(p.x / GRID_SIZE);
-                                    const gy = Math.floor(p.y / GRID_SIZE);
-                                    if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
-                                        grid.current[gx][gy] = Math.min(grid.current[gx][gy] + 0.05, 1.0);
-                                        gridColors.current[gx][gy] = pt.color;
-                                    }
+                                ctx.shadowBlur = tokens.glow;
+                                ctx.fillStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 1.0)`;
+                                ctx.fillRect(p.x, p.y, CANVAS_STYLE.henonDotSize, CANVAS_STYLE.henonDotSize);
+                                ctx.shadowBlur = 0;
+                            }
+                        } else {
+                            ctx.lineTo(p.x, p.y);
+                            if (step % CANVAS_STYLE.trailStepInterval === 0) {
+                                const gx = Math.floor(p.x / GRID_SIZE);
+                                const gy = Math.floor(p.y / GRID_SIZE);
+                                if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
+                                    grid.current[gx][gy] = Math.min(
+                                        grid.current[gx][gy] + CANVAS_STYLE.trailGridBoost,
+                                        1.0
+                                    );
+                                    gridColors.current[gx][gy] = pt.color;
                                 }
                             }
                         }
+                    }
 
-                        if (attractor.type !== 'henon') {
-                            ctx.stroke();
-                            ctx.shadowBlur = 0;
-                        }
-                    });
-
-                    if (attractor.rect) {
-                        ctx.restore();
+                    if (attractor.type !== 'henon') {
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
                     }
                 });
 
-                if (hudRef.current) {
-                    hudRef.current.updateEnergy(energy.current);
-                    hudRef.current.updateEntropy(entropy.current);
-                }
+                if (attractor.rect) ctx.restore();
+            });
 
-                if (!isIntro.current && mouse.current.active && lastPos.current) {
-                    const dx = mouse.current.x - lastPos.current.x;
-                    const dy = mouse.current.y - lastPos.current.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist > 5) {
-                        spawnParticle(mouse.current.x, mouse.current.y, dx * 0.2, dy * 0.2, false, undefined);
-                        lastPos.current = { x: mouse.current.x, y: mouse.current.y };
-                    }
-                } else if (mouse.current.active) {
+            if (mouse.current.active && lastPos.current) {
+                const dx = mouse.current.x - lastPos.current.x;
+                const dy = mouse.current.y - lastPos.current.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 5) {
+                    spawnParticle(mouse.current.x, mouse.current.y, dx * 0.2, dy * 0.2, false);
                     lastPos.current = { x: mouse.current.x, y: mouse.current.y };
                 }
+            } else if (mouse.current.active) {
+                lastPos.current = { x: mouse.current.x, y: mouse.current.y };
+            }
 
-                particles.current.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.life -= 0.01;
-                    const gx = Math.floor(p.x / GRID_SIZE);
-                    const gy = Math.floor(p.y / GRID_SIZE);
-                    if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
-                        grid.current[gx][gy] = Math.min(grid.current[gx][gy] + 0.05, 1.0);
-                    }
-                });
-                particles.current = particles.current.filter(p => p.life > 0);
+            particles.current.forEach((p) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= CANVAS_STYLE.particleLifeDecay;
+                const gx = Math.floor(p.x / GRID_SIZE);
+                const gy = Math.floor(p.y / GRID_SIZE);
+                if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
+                    grid.current[gx][gy] = Math.min(
+                        grid.current[gx][gy] + CANVAS_STYLE.trailGridBoost,
+                        1.0
+                    );
+                }
+            });
+            particles.current = particles.current.filter((p) => p.life > 0);
 
-                ctx.shadowBlur = 0;
-                for (let i = 0; i < cols; i++) {
-                    for (let j = 0; j < rows; j++) {
-                        const intensity = grid.current[i][j];
-                        if (intensity > 0.01) {
-                            grid.current[i][j] *= DECAY_RATE;
-                            const rgb = gridColors.current[i][j] || INK_COLOR;
-                            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity * 0.3})`;
-                            ctx.fillRect(i * GRID_SIZE, j * GRID_SIZE, GRID_SIZE, GRID_SIZE);
-                        }
+            ctx.shadowBlur = 0;
+            for (let i = 0; i < cols; i++) {
+                for (let j = 0; j < rows; j++) {
+                    const intensity = grid.current[i][j];
+                    if (intensity > 0.01) {
+                        grid.current[i][j] *= DECAY_RATE;
+                        const rgb = gridColors.current[i][j] || INK_COLOR;
+                        ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${intensity * tokens.gridIntensity})`;
+                        ctx.fillRect(i * GRID_SIZE, j * GRID_SIZE, GRID_SIZE, GRID_SIZE);
                     }
                 }
-
-                particles.current.forEach(p => {
-                    ctx.fillStyle = p.color ? `rgb(${p.color.r},${p.color.g},${p.color.b})` : '#ffffff';
-                    ctx.globalAlpha = p.life;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = p.color ? `rgb(${p.color.r},${p.color.g},${p.color.b})` : '#00f3ff';
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                });
-                ctx.globalAlpha = 1.0;
             }
-            animationFrameId = requestAnimationFrame(render);
+
+            particles.current.forEach((p) => {
+                ctx.fillStyle = p.color ? `rgb(${p.color.r},${p.color.g},${p.color.b})` : '#ffffff';
+                ctx.globalAlpha = p.life;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, CANVAS_STYLE.particleRadius, 0, Math.PI * 2);
+                ctx.shadowBlur = tokens.glow;
+                ctx.shadowColor = p.color ? `rgb(${p.color.r},${p.color.g},${p.color.b})` : tokens.inkHigh;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+            ctx.globalAlpha = 1.0;
+
+            animationRef.current = requestAnimationFrame(render);
         };
 
-        render();
-        window.addEventListener('resize', resizeCanvas);
+        animationRef.current = requestAnimationFrame(render);
+        return () => cancelAnimationFrame(animationRef.current);
+    }, [spawnParticle, tickFPS]);
 
-        const handleMouseMove = (e: MouseEvent) => {
+    useEffect(() => {
+        const handlePointerMove = (e: PointerEvent) => {
             mouse.current = { x: e.clientX, y: e.clientY, active: true };
         };
-        const handleMouseLeave = () => {
+        const handlePointerOut = () => {
             mouse.current.active = false;
             lastPos.current = null;
         };
-        const handleClick = () => {
-            if (isIntro.current) {
-                triggerMerge();
-            }
+        const handleClick = (e: MouseEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target && target.closest('[data-no-merge]')) return;
+            if (isIntroRef.current) triggerMerge();
         };
-
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseout', handleMouseLeave);
+        window.addEventListener('pointermove', handlePointerMove);
+        window.addEventListener('pointerout', handlePointerOut);
         window.addEventListener('click', handleClick, { capture: true });
-
         return () => {
-            window.removeEventListener('resize', resizeCanvas);
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseout', handleMouseLeave);
+            window.removeEventListener('pointermove', handlePointerMove);
+            window.removeEventListener('pointerout', handlePointerOut);
             window.removeEventListener('click', handleClick, { capture: true });
-            cancelAnimationFrame(animationFrameId);
         };
+    }, [triggerMerge]);
+
+    const handleRotate = useCallback((index: number, delta: { dx: number; dy: number }) => {
+        const attr = attractors.current[index];
+        if (!attr.rotation) return;
+        attr.rotation.y += delta.dx * 0.02;
+        attr.rotation.x += delta.dy * 0.02;
     }, []);
 
-    const handleColorChange = (index: number, hex: string) => {
+    const handleScaleChange = useCallback((index: number, value: number) => {
+        attractors.current[index].scale = value;
+        setOverlayItems((prev) =>
+            prev.map((it) => (it.index === index ? { ...it, scale: value } : it))
+        );
+    }, []);
+
+    const handleSpeedChange = useCallback((index: number, value: number) => {
+        attractors.current[index].params.dt = value;
+        setSpeeds((prev) => {
+            const next = [...prev];
+            next[index] = value;
+            return next;
+        });
+    }, []);
+
+    const handlePointsChange = useCallback((index: number, delta: number) => {
+        const attr = attractors.current[index];
+        if (delta > 0 && attr.points.length < POINT_LIMITS.max) {
+            const last = attr.points[attr.points.length - 1];
+            attr.points.push({
+                x: last.x + 0.02,
+                y: last.y + 0.02,
+                z: last.z + 0.02,
+                color: { ...last.color },
+            });
+        } else if (delta < 0 && attr.points.length > POINT_LIMITS.min) {
+            attr.points.pop();
+        }
+        setOverlayItems((prev) =>
+            prev.map((it) =>
+                it.index === index ? { ...it, pointCount: attr.points.length } : it
+            )
+        );
+    }, []);
+
+    const handleColorChange = useCallback((index: number, hex: string) => {
         const newColor = hexToRgb(hex);
-        attractors.current[index].color = newColor;
-        attractors.current[index].points.forEach((pt, i) => {
-            const [h, s, l] = rgbToHsl(newColor.r, newColor.g, newColor.b);
+        const attr = attractors.current[index];
+        attr.color = newColor;
+        const [h, s, l] = rgbToHsl(newColor.r, newColor.g, newColor.b);
+        attr.points.forEach((pt, i) => {
             pt.color = hslToRgb((h + i * 0.02) % 1, s, l);
         });
-        setOverlayItems(prev => prev.map(item =>
-            item.index === index ? { ...item, color: newColor } : item
-        ));
-    };
+        setOverlayItems((prev) =>
+            prev.map((it) => (it.index === index ? { ...it, color: newColor } : it))
+        );
+    }, []);
 
-    const handleFlush = (index: number) => {
+    const handleFlush = useCallback((index: number) => {
         const attr = attractors.current[index];
         if (!attr.rect) return;
-
         const startX = Math.floor(attr.rect.x / GRID_SIZE);
         const endX = Math.floor((attr.rect.x + attr.rect.w) / GRID_SIZE);
         const startY = Math.floor(attr.rect.y / GRID_SIZE);
         const endY = Math.floor((attr.rect.y + attr.rect.h) / GRID_SIZE);
-
         for (let x = startX; x <= endX; x++) {
             for (let y = startY; y <= endY; y++) {
                 if (grid.current[x] && grid.current[x][y] !== undefined) {
@@ -356,175 +442,198 @@ const TheVoid: React.FC<TheVoidProps> = ({ hudRef }) => {
                 }
             }
         }
-    };
+    }, []);
+
+    const handleResetAll = useCallback(() => {
+        for (let x = 0; x < colsRef.current; x++) {
+            for (let y = 0; y < rowsRef.current; y++) {
+                grid.current[x][y] = 0;
+                gridColors.current[x][y] = null;
+            }
+        }
+        particles.current = [];
+    }, []);
+
+    const applyColorToAttractor = useCallback((index: number, rgb: RGB) => {
+        const attr = attractors.current[index];
+        attr.color = rgb;
+        const [h, s, l] = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        attr.points.forEach((pt, i) => {
+            pt.color = hslToRgb((h + i * 0.02) % 1, s, l);
+        });
+    }, []);
+
+    const handleRandomize = useCallback((index: number) => {
+        const attr = attractors.current[index];
+        const next = randomizeAttractor(attr);
+        attr.rotation = next.rotation;
+        attr.scale = next.scale;
+        attr.params.dt = next.speed;
+        applyColorToAttractor(index, next.color);
+        setSpeeds((prev) => {
+            const out = [...prev];
+            out[index] = next.speed;
+            return out;
+        });
+        setOverlayItems((prev) =>
+            prev.map((it) =>
+                it.index === index
+                    ? { ...it, rotation: next.rotation, scale: next.scale, color: next.color }
+                    : it
+            )
+        );
+    }, [applyColorToAttractor]);
+
+    const handleRandomizeAll = useCallback(() => {
+        for (let i = 0; i < attractors.current.length; i++) handleRandomize(i);
+    }, [handleRandomize]);
+
+    const handlePaletteChange = useCallback((next: PaletteName) => {
+        setPalette(next);
+        const colors = PALETTES[next];
+        attractors.current.forEach((_, i) => {
+            applyColorToAttractor(i, colors[i % colors.length]);
+        });
+        setOverlayItems((prev) =>
+            prev.map((it) => ({ ...it, color: colors[it.index % colors.length] }))
+        );
+    }, [applyColorToAttractor]);
+
+    const handleSnapshot = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        snapshotPNG(canvas);
+    }, []);
+
+    const handleToggleRecording = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        if (!recorderRef.current) recorderRef.current = new CanvasRecorder();
+        const rec = recorderRef.current;
+        if (rec.isRecording()) {
+            rec.stop().then((blob) => {
+                setRecording(false);
+                if (blob) downloadBlob(blob);
+            });
+        } else {
+            const started = rec.start(canvas);
+            if (started) setRecording(true);
+        }
+    }, []);
+
+    const handleToggleTour = useCallback(() => {
+        setTourOpen((v) => {
+            if (!v) setTourIndex(0);
+            return !v;
+        });
+    }, []);
+
+    const handleTourNext = useCallback(() => {
+        setTourIndex((i) => Math.min(i + 1, attractors.current.length - 1));
+    }, []);
+
+    const handleTourPrev = useCallback(() => {
+        setTourIndex((i) => Math.max(i - 1, 0));
+    }, []);
+
+    const handleTogglePause = useCallback(() => setPaused((p) => !p), []);
+    const handleToggleStats = useCallback(() => setStatsVisible((v) => !v), []);
+    const handleToggleHelp = useCallback(() => setHelpOpen((v) => !v), []);
+
+    const shortcuts = useMemo(
+        () => ({
+            Space: (e: KeyboardEvent) => {
+                e.preventDefault();
+                handleTogglePause();
+            },
+            Escape: () => {
+                if (helpOpen) setHelpOpen(false);
+                else if (tourOpen) setTourOpen(false);
+                else handleResetAll();
+            },
+            '?': () => handleToggleHelp(),
+            KeyS: () => handleToggleStats(),
+            KeyT: () => toggleTheme(),
+            KeyH: () => handleToggleHelp(),
+            KeyN: () => handleToggleTour(),
+            KeyR: () => handleRandomizeAll(),
+            KeyP: () => handleSnapshot(),
+            KeyV: () => handleToggleRecording(),
+        }),
+        [
+            handleResetAll,
+            handleToggleHelp,
+            handleTogglePause,
+            handleToggleStats,
+            handleToggleTour,
+            handleRandomizeAll,
+            handleSnapshot,
+            handleToggleRecording,
+            toggleTheme,
+            helpOpen,
+            tourOpen,
+        ]
+    );
+
+    useKeyboardShortcuts(shortcuts);
 
     return (
-        <div className="relative w-full h-full overflow-hidden">
-            <canvas ref={canvasRef} className="absolute inset-0 z-0" />
+        <div className="relative w-full h-full overflow-hidden" data-theme={theme}>
+            <canvas ref={canvasRef} className="absolute inset-0 z-canvas" />
 
-            {overlayItems.map((item) => (
-                <div
-                    key={item.index}
-                    style={{
-                        position: 'absolute',
-                        left: item.rect.x,
-                        top: item.rect.y,
-                        width: item.rect.w,
-                        height: item.rect.h,
-                        pointerEvents: 'none',
-                    }}
-                    className="flex flex-col justify-between p-4 box-border z-10"
-                >
-                    <h3
-                        className="text-[10px] font-bold tracking-[0.2em] uppercase opacity-70 text-center"
-                        style={{
-                            color: `rgba(${item.color.r}, ${item.color.g}, ${item.color.b}, 1)`,
-                            textShadow: `0 0 10px rgba(${item.color.r}, ${item.color.g}, ${item.color.b}, 0.5)`
-                        }}
-                    >
-                        {item.type.replace(/_/g, ' ')}
-                    </h3>
+            {intro && <IntroOverlay loading={false} />}
 
-                    <div className="pointer-events-auto flex flex-col gap-1 opacity-0 hover:opacity-100 transition-opacity duration-300 bg-[#050505]/90 p-3 rounded-lg border border-white/5 backdrop-blur-sm">
-                        <div className="text-[9px] text-gray-500 font-mono tracking-widest mb-1 text-center">SCALE</div>
-                        <div className="flex items-center gap-2 text-[10px] font-mono text-gray-400 mb-2">
-                            <input
-                                type="range"
-                                min="0.1"
-                                max="100"
-                                step="0.1"
-                                defaultValue={item.scale}
-                                className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-white"
-                                onChange={(e) => {
-                                    attractors.current[item.index].scale = parseFloat(e.target.value);
-                                }}
-                            />
-                        </div>
+            <AttractorGrid
+                items={overlayItems}
+                speeds={speeds}
+                onRotate={handleRotate}
+                onScaleChange={handleScaleChange}
+                onSpeedChange={handleSpeedChange}
+                onPointsChange={handlePointsChange}
+                onColorChange={handleColorChange}
+                onFlush={handleFlush}
+                onRandomize={handleRandomize}
+            />
 
-                        <div className="text-[11px] text-gray-400 font-mono tracking-widest mb-2 text-center">ROTATION</div>
-                        <div
-                            className="relative w-24 h-24 mx-auto bg-gradient-to-br from-gray-800 to-gray-900 rounded-full border-2 border-cyan-500/40 select-none hover:border-cyan-400/70 transition-all shadow-lg shadow-cyan-500/10"
-                            style={{ cursor: 'grab' }}
-                            onMouseDown={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
+            <PausedOverlay visible={paused} />
 
-                                let lastX = e.clientX;
-                                let lastY = e.clientY;
+            <StatsHUD
+                fps={fps}
+                pointCount={totalPoints}
+                energy={energyState}
+                phase={phase}
+                visible={statsVisible}
+            />
 
-                                const onMove = (moveEvent: MouseEvent) => {
-                                    const deltaX = moveEvent.clientX - lastX;
-                                    const deltaY = moveEvent.clientY - lastY;
-                                    lastX = moveEvent.clientX;
-                                    lastY = moveEvent.clientY;
+            <div data-no-merge>
+                <Toolbar
+                    paused={paused}
+                    theme={theme}
+                    statsVisible={statsVisible}
+                    palette={palette}
+                    recording={recording}
+                    onTogglePause={handleTogglePause}
+                    onResetAll={handleResetAll}
+                    onToggleTheme={toggleTheme}
+                    onToggleStats={handleToggleStats}
+                    onToggleHelp={handleToggleHelp}
+                    onToggleTour={handleToggleTour}
+                    onRandomizeAll={handleRandomizeAll}
+                    onPaletteChange={handlePaletteChange}
+                    onSnapshot={handleSnapshot}
+                    onToggleRecording={handleToggleRecording}
+                />
+            </div>
 
-                                    const attr = attractors.current[item.index];
-                                    if (attr.rotation) {
-                                        attr.rotation.y += deltaX * 0.02;
-                                        attr.rotation.x += deltaY * 0.02;
-                                    }
-                                };
-
-                                const onUp = () => {
-                                    window.removeEventListener('mousemove', onMove);
-                                    window.removeEventListener('mouseup', onUp);
-                                };
-
-                                window.addEventListener('mousemove', onMove);
-                                window.addEventListener('mouseup', onUp);
-                            }}
-                        >
-                            {/* Center Knob */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-cyan-500/30 rounded-full border-2 border-cyan-400/50 shadow-inner" />
-                            {/* Crosshairs */}
-                            <div className="absolute top-1/2 left-2 right-2 h-0.5 bg-white/20 rounded-full" />
-                            <div className="absolute left-1/2 top-2 bottom-2 w-0.5 bg-white/20 rounded-full" />
-                            {/* Direction indicators */}
-                            <div className="absolute top-1 left-1/2 -translate-x-1/2 text-[8px] text-cyan-400/60">↑</div>
-                            <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[8px] text-cyan-400/60">↓</div>
-                            <div className="absolute left-1 top-1/2 -translate-y-1/2 text-[8px] text-cyan-400/60">←</div>
-                            <div className="absolute right-1 top-1/2 -translate-y-1/2 text-[8px] text-cyan-400/60">→</div>
-                        </div>
-                        <div className="text-[10px] text-cyan-500/70 font-mono text-center mt-2 font-bold">DRAG TO ROTATE</div>
-
-                        {/* Points Control */}
-                        <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-white/10">
-                            <span className="text-[10px] text-gray-400 font-mono">POINTS</span>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => {
-                                        const attr = attractors.current[item.index];
-                                        if (attr.points.length > 1) {
-                                            attr.points.pop();
-                                            forceUpdate(n => n + 1);
-                                        }
-                                    }}
-                                    className="w-6 h-6 text-sm font-bold bg-gray-800 hover:bg-red-500/50 text-gray-400 hover:text-white rounded border border-white/10 transition-all"
-                                >
-                                    −
-                                </button>
-                                <span className="text-[10px] text-white font-mono w-6 text-center">
-                                    {attractors.current[item.index]?.points.length || 10}
-                                </span>
-                                <button
-                                    onClick={() => {
-                                        const attr = attractors.current[item.index];
-                                        if (attr.points.length < 50) {
-                                            const lastPoint = attr.points[attr.points.length - 1];
-                                            attr.points.push({
-                                                x: lastPoint.x + 0.02,
-                                                y: lastPoint.y + 0.02,
-                                                z: lastPoint.z + 0.02,
-                                                color: { ...lastPoint.color }
-                                            });
-                                            forceUpdate(n => n + 1);
-                                        }
-                                    }}
-                                    className="w-6 h-6 text-sm font-bold bg-gray-800 hover:bg-green-500/50 text-gray-400 hover:text-white rounded border border-white/10 transition-all"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Speed Control */}
-                        <div className="flex items-center justify-between gap-2 mt-2">
-                            <span className="text-[10px] text-gray-400 font-mono">SPEED</span>
-                            <div className="flex items-center gap-2 flex-1">
-                                <input
-                                    type="range"
-                                    min="0.001"
-                                    max="0.03"
-                                    step="0.001"
-                                    defaultValue={attractors.current[item.index]?.params.dt || 0.01}
-                                    className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-yellow-500"
-                                    onChange={(e) => {
-                                        attractors.current[item.index].params.dt = parseFloat(e.target.value);
-                                    }}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-white/10">
-                            <div className="flex items-center gap-2">
-                                <span className="text-[9px] text-gray-500 font-mono">COLOR</span>
-                                <input
-                                    type="color"
-                                    className="w-4 h-4 rounded cursor-pointer bg-transparent p-0 border-none appearance-none"
-                                    defaultValue={rgbToHex(item.color)}
-                                    onChange={(e) => handleColorChange(item.index, e.target.value)}
-                                />
-                            </div>
-                            <button
-                                onClick={() => handleFlush(item.index)}
-                                className="px-2 py-0.5 text-[9px] font-mono uppercase bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white rounded border border-red-500/20 transition-all"
-                            >
-                                Flush
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ))}
+            <HelpModal open={helpOpen} onClose={handleToggleHelp} />
+            <TourModal
+                open={tourOpen}
+                types={tourTypes}
+                index={tourIndex}
+                onNext={handleTourNext}
+                onPrev={handleTourPrev}
+                onClose={handleToggleTour}
+            />
         </div>
     );
 };
