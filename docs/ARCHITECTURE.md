@@ -48,7 +48,9 @@ the-record/
 │   │   ├── Joystick.tsx          # Pointer-drag rotation + live needle
 │   │   ├── StatsHUD.tsx          # FPS / points / energy / phase
 │   │   ├── HelpModal.tsx         # Keyboard shortcut legend
-│   │   ├── Toolbar.tsx           # Global Pause / Reset / Theme / Stats / Help
+│   │   ├── Toolbar.tsx           # Global Pause / Reset / Randomize / Palette / Export / Tour / Theme / Stats / Help
+│   │   ├── InfoTooltip.tsx       # Hover card with equations + metadata
+│   │   ├── TourModal.tsx         # Narrative walkthrough of all 10 attractors
 │   │   ├── IntroOverlay.tsx      # "CLICK TO MERGE" + loading dots
 │   │   ├── PausedOverlay.tsx     # Dimmed pause state
 │   │   ├── ErrorBoundary.tsx     # Readable canvas-failure fallback
@@ -56,7 +58,7 @@ the-record/
 │   │   ├── types.ts              # Shared TypeScript interfaces
 │   │   ├── attractors/
 │   │   │   ├── attractorCalculations.ts  # Physics per type
-│   │   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer (Wave 2 content)
+│   │   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer (used by InfoTooltip + Tour)
 │   │   └── utils/
 │   │       ├── colorUtils.ts     # RGB ↔ HSL / hex conversions
 │   │       └── projection.ts     # 3D → 2D isometric projection
@@ -69,9 +71,9 @@ the-record/
 │   │   └── useBreakpoint.ts      # mobile / tablet / desktop
 │   ├── utils/
 │   │   ├── themeTokens.ts        # Canvas-facing token bridge
-│   │   ├── palettes.ts           # Color palette presets (Wave 2)
-│   │   ├── randomParams.ts       # Randomizer bounds (Wave 2)
-│   │   └── exportCanvas.ts       # PNG snapshot + WebM recorder (Wave 2)
+│   │   ├── palettes.ts           # Color palette presets (6 × 10 RGB)
+│   │   ├── randomParams.ts       # Bounded randomizer for color/rot/scale/speed
+│   │   └── exportCanvas.ts       # PNG snapshot + CanvasRecorder (WebM)
 │   ├── App.tsx                   # ErrorBoundary + TheVoid
 │   ├── main.tsx                  # Entry point
 │   └── index.css                 # Global styles + CSS variables (dark + light)

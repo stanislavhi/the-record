@@ -2,6 +2,7 @@ import { memo } from 'react';
 import type { OverlayItem } from './types';
 import Joystick from './Joystick';
 import ControlPanel from './ControlPanel';
+import InfoTooltip from './InfoTooltip';
 import { getDisplayName } from './attractors/attractorInfo';
 
 interface AttractorTileProps {
@@ -13,6 +14,7 @@ interface AttractorTileProps {
     onPointsChange: (index: number, delta: number) => void;
     onColorChange: (index: number, hex: string) => void;
     onFlush: (index: number) => void;
+    onRandomize: (index: number) => void;
 }
 
 const AttractorTile = memo((props: AttractorTileProps) => {
@@ -25,6 +27,7 @@ const AttractorTile = memo((props: AttractorTileProps) => {
         onPointsChange,
         onColorChange,
         onFlush,
+        onRandomize,
     } = props;
 
     const accent = `rgb(${item.color.r}, ${item.color.g}, ${item.color.b})`;
@@ -43,12 +46,25 @@ const AttractorTile = memo((props: AttractorTileProps) => {
             }}
             className="group flex flex-col justify-between p-4 box-border z-overlay"
         >
-            <h3
-                className="text-label font-bold tracking-[0.2em] uppercase text-center transition-base duration-200 group-hover:opacity-100 opacity-75"
-                style={{ color: accent, textShadow: `0 0 10px ${glow}` }}
-            >
-                {displayName}
-            </h3>
+            <div className="group/title relative mx-auto pointer-events-auto">
+                <button
+                    type="button"
+                    className="text-label font-bold tracking-[0.2em] uppercase text-center transition-base duration-200 group-hover:opacity-100 opacity-75 rounded-sm px-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                    style={{
+                        color: accent,
+                        textShadow: `0 0 10px ${glow}`,
+                        outlineColor: accent,
+                    }}
+                    aria-describedby={`info-${item.index}`}
+                >
+                    {displayName}
+                </button>
+                <InfoTooltip
+                    type={item.type}
+                    accentColor={accent}
+                    id={`info-${item.index}`}
+                />
+            </div>
 
             <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-base duration-200">
                 <Joystick
@@ -67,6 +83,7 @@ const AttractorTile = memo((props: AttractorTileProps) => {
                     onScaleChange={(v) => onScaleChange(item.index, v)}
                     onSpeedChange={(v) => onSpeedChange(item.index, v)}
                     onFlush={() => onFlush(item.index)}
+                    onRandomize={() => onRandomize(item.index)}
                 />
             </div>
         </div>

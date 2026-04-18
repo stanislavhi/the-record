@@ -28,10 +28,15 @@ An interactive visualization of chaotic attractors — mathematical systems that
   - ➕➖ **Point Count** — Add or remove simulation points (1–50)
   - ⚡ **Speed Control** — Adjust simulation timestep
   - 🎨 **Color Picker** — Change attractor colors dynamically
+  - 🎲 **Randomize** — Instantly randomize color, rotation, scale, and speed
   - 🚿 **Flush** — Clear trail history for a tile
-- **Global Toolbar** — Pause, Reset All, Theme toggle, Stats overlay, Help modal
-- **Dark + Light themes** — CSS-variable-driven, persisted to `localStorage`, honors `prefers-color-scheme`
-- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme
+  - ℹ️ **Info Tooltip** — Hover the tile title for equations, Lyapunov exponent, and discoverer
+- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, Palette presets, PNG export, WebM recorder, Tour, Theme toggle, Stats overlay, Help modal
+- **Narrative Tour** — Guided walkthrough of all 10 attractors (toolbar "Tour" or `N`)
+- **PNG + WebM Export** — Snapshot the canvas as PNG or record a WebM video
+- **6 Palette Presets** — Original, Neon, Pastel, Mono, Warm, Cold — applied to all 10 attractors
+- **Dark + Light themes** — CSS-variable-driven, tuned glow/alpha per theme, persisted to `localStorage`, honors `prefers-color-scheme`
+- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour
 - **Touch Support** — Pointer Events across joystick and canvas
 - **Responsive Grid** — 2 / 3 / 5 columns across mobile / tablet / desktop
 - **Accessibility** — ARIA labels, visible focus rings, keyboard-reachable controls
@@ -76,10 +81,14 @@ npm run preview
 | Key | Action |
 |-----|--------|
 | `Space` | Pause / resume simulation |
-| `Esc` | Reset all trails |
+| `Esc` | Reset all trails (or close open modal) |
 | `?` / `H` | Toggle the keyboard-shortcut help modal |
 | `S` | Toggle the stats overlay (FPS / points / energy) |
 | `T` | Toggle dark / light theme |
+| `R` | Randomize all attractors |
+| `P` | Save PNG snapshot of the canvas |
+| `V` | Start / stop WebM recording |
+| `N` | Open / close the narrative tour |
 
 ## 🧮 The Attractors
 
@@ -108,7 +117,9 @@ src/
 │   ├── Joystick.tsx           # Pointer-drag rotation + live needle
 │   ├── StatsHUD.tsx           # FPS, point count, energy, phase
 │   ├── HelpModal.tsx          # Keyboard shortcut legend
-│   ├── Toolbar.tsx            # Global pause/reset/theme/stats/help
+│   ├── Toolbar.tsx            # Global pause/reset/randomize/palette/export/tour/theme
+│   ├── InfoTooltip.tsx        # Hover card with equations + metadata
+│   ├── TourModal.tsx          # Narrative walkthrough of all 10 attractors
 │   ├── IntroOverlay.tsx       # "CLICK TO MERGE" with loading dots
 │   ├── PausedOverlay.tsx      # Dimmed pause state
 │   ├── ErrorBoundary.tsx      # Readable fallback if canvas fails
@@ -129,9 +140,9 @@ src/
 │   └── useBreakpoint.ts       # Responsive mobile/tablet/desktop
 ├── utils/
 │   ├── themeTokens.ts         # Canvas-facing theme token bridge
-│   ├── palettes.ts            # Color palette presets (Wave 2)
-│   ├── randomParams.ts        # Randomizer bounds (Wave 2)
-│   └── exportCanvas.ts        # PNG snapshot + WebM recorder (Wave 2)
+│   ├── palettes.ts            # Color palette presets
+│   ├── randomParams.ts        # Randomizer bounds
+│   └── exportCanvas.ts        # PNG snapshot + WebM recorder
 ├── App.tsx                    # ErrorBoundary + TheVoid
 └── main.tsx
 ```

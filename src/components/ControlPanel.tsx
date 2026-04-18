@@ -14,6 +14,7 @@ interface ControlPanelProps {
     onScaleChange: (value: number) => void;
     onSpeedChange: (value: number) => void;
     onFlush: () => void;
+    onRandomize: () => void;
 }
 
 const ControlPanel = memo((props: ControlPanelProps) => {
@@ -28,6 +29,7 @@ const ControlPanel = memo((props: ControlPanelProps) => {
         onScaleChange,
         onSpeedChange,
         onFlush,
+        onRandomize,
     } = props;
 
     return (
@@ -118,14 +120,25 @@ const ControlPanel = memo((props: ControlPanelProps) => {
                             style={{ boxShadow: `0 0 6px ${accentColor}88` }}
                         />
                     </label>
-                    <button
-                        type="button"
-                        aria-label="Flush this attractor's trail"
-                        onClick={onFlush}
-                        className="px-2 py-0.5 text-label font-mono uppercase bg-ink-low/10 hover:bg-ink-low text-ink-low hover:text-white rounded border border-ink-low/30 transition-base duration-150 focus-visible:ring-2 focus-visible:ring-ink-low/60"
-                    >
-                        Flush
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            aria-label="Randomize this attractor"
+                            onClick={onRandomize}
+                            title="Randomize color, rotation, scale, speed"
+                            className="px-2 py-0.5 text-label font-mono uppercase bg-white/5 hover:bg-white/15 text-gray-300 hover:text-white rounded border border-white/10 transition-base duration-150 focus-visible:ring-2 focus-visible:ring-white/40"
+                        >
+                            🎲
+                        </button>
+                        <button
+                            type="button"
+                            aria-label="Flush this attractor's trail"
+                            onClick={onFlush}
+                            className="px-2 py-0.5 text-label font-mono uppercase bg-ink-low/10 hover:bg-ink-low text-ink-low hover:text-white rounded border border-ink-low/30 transition-base duration-150 focus-visible:ring-2 focus-visible:ring-ink-low/60"
+                        >
+                            Flush
+                        </button>
+                    </div>
                 </div>
             </section>
         </div>

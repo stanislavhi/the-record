@@ -71,9 +71,20 @@ Each attractor runs **10 parallel points** by default with a coherent HSL color 
 - The point gradient is recomputed live from the new hue
 - Trail history retains the old color until it fades
 
+### 🎲 Randomize
+- One-click random color, rotation, scale, and speed for that tile
+- Bounded by the same limits that apply to the sliders, so it never picks diverging parameters
+
 ### 🚿 Flush
 - Clears the grid trail history for that tile only
 - Instant clean slate — useful when the grid gets saturated
+
+### ℹ️ Info tooltip
+- Hover (or focus) the tile title to reveal a card with:
+  - Discoverer and year
+  - The attractor's governing equations
+  - Its Lyapunov exponent
+  - A one-sentence blurb describing what makes it interesting
 
 All controls include ARIA labels and visible focus rings so they're reachable via keyboard and announced by screen readers.
 
@@ -87,6 +98,11 @@ The fixed toolbar at the bottom center of the screen exposes whole-app actions:
 |--------|--------|
 | ⏸ / ▶ | **Pause / Resume** the entire simulation |
 | ↺ | **Reset All** — flush every tile's trails |
+| 🎲 All | **Randomize All** — randomize every attractor at once |
+| Palette ▾ | **Palette preset** — apply Original, Neon, Pastel, Mono, Warm, or Cold across all 10 attractors |
+| PNG | **Snapshot** — save the current canvas as a timestamped PNG |
+| ● Rec / ■ Stop | **Record** — start/stop a WebM video of the canvas |
+| Tour | **Narrative tour** — step through each attractor with equations and metadata |
 | ☼ / ☾ | **Theme toggle** — switch between dark and light |
 | ▦ | **Stats** — toggle the FPS / points / energy HUD |
 | ? | **Help** — open the keyboard-shortcut modal |
@@ -100,12 +116,41 @@ Clicks inside the toolbar are excluded from the canvas "merge" handler, so press
 | Key | Action |
 |-----|--------|
 | `Space` | Pause / resume simulation |
-| `Esc` | Reset all trails |
+| `Esc` | Reset all trails (or close open modal) |
 | `?` / `H` | Toggle the keyboard-shortcut help modal |
 | `S` | Toggle the stats overlay |
 | `T` | Toggle dark / light theme |
+| `R` | Randomize every attractor |
+| `P` | Save a PNG snapshot |
+| `V` | Start / stop WebM recording |
+| `N` | Open / close the narrative tour |
+| `←` / `→` | Navigate within the tour when open |
 
 Shortcuts are ignored while typing inside inputs, textareas, or contenteditable regions (except `Escape`, which always resets).
+
+## Narrative Tour
+
+The tour is a guided walkthrough of all 10 attractors. Open it from the toolbar or with `N`. Each card shows the attractor's name, discoverer + year, equations, Lyapunov exponent, and a short blurb explaining what makes it interesting. Use `←` / `→` to step through and `Esc` to close.
+
+## PNG + WebM Export
+
+- **PNG** — `P` or the toolbar button saves the current canvas as `the-record-<timestamp>.png` using `canvas.toDataURL('image/png')`
+- **WebM** — `V` or the toolbar "● Rec" button starts a recording via `canvas.captureStream()` + `MediaRecorder`. Press again (or "■ Stop") to stop and download. Codec falls back from `video/webm;codecs=vp9` to `video/webm` when VP9 isn't available.
+
+## Palette Presets
+
+The toolbar's **Palette** dropdown applies one of six curated color sets to all 10 attractors at once:
+
+| Preset | Vibe |
+|--------|------|
+| Original | The launch colors (white, gold, hot pink, orange, cyan, green, mint, magenta, violet, amber) |
+| Neon | Saturated cyans, magentas, and yellows |
+| Pastel | Soft, low-saturation hues |
+| Mono | Shades of gray — good for capturing structure without chromatic distraction |
+| Warm | Reds, oranges, ambers |
+| Cold | Blues, indigos, violets |
+
+The per-tile color picker still works after a palette is applied — palettes are just a quick way to reset the whole grid.
 
 ---
 

@@ -1,15 +1,23 @@
 import { memo } from 'react';
 import type { Theme } from './types';
+import { PALETTE_LABELS, type PaletteName } from '../utils/palettes';
 
 interface ToolbarProps {
     paused: boolean;
     theme: Theme;
     statsVisible: boolean;
+    palette: PaletteName;
+    recording: boolean;
     onTogglePause: () => void;
     onResetAll: () => void;
     onToggleTheme: () => void;
     onToggleStats: () => void;
     onToggleHelp: () => void;
+    onToggleTour: () => void;
+    onRandomizeAll: () => void;
+    onPaletteChange: (palette: PaletteName) => void;
+    onSnapshot: () => void;
+    onToggleRecording: () => void;
 }
 
 interface ButtonProps {
@@ -42,16 +50,26 @@ const Toolbar = memo((props: ToolbarProps) => {
         paused,
         theme,
         statsVisible,
+        palette,
+        recording,
         onTogglePause,
         onResetAll,
         onToggleTheme,
         onToggleStats,
         onToggleHelp,
+        onToggleTour,
+        onRandomizeAll,
+        onPaletteChange,
+        onSnapshot,
+        onToggleRecording,
     } = props;
 
     return (
         <div className="pointer-events-none fixed bottom-0 inset-x-0 p-4 flex justify-center z-toolbar">
-            <div className="pointer-events-auto flex gap-2 p-2 rounded-lg border backdrop-blur-sm" style={{ backgroundColor: 'var(--color-panel)', borderColor: 'var(--color-border)' }}>
+            <div
+                className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 p-2 rounded-lg border backdrop-blur-sm max-w-[95vw]"
+                style={{ backgroundColor: 'var(--color-panel)', borderColor: 'var(--color-border)' }}
+            >
                 <ToolbarButton
                     label={paused ? 'Resume' : 'Pause'}
                     title="Pause or resume the simulation (Space)"
@@ -62,6 +80,46 @@ const Toolbar = memo((props: ToolbarProps) => {
                     label="Reset"
                     title="Reset all trails (Esc)"
                     onClick={onResetAll}
+                />
+                <ToolbarButton
+                    label="🎲 All"
+                    title="Randomize every attractor"
+                    onClick={onRandomizeAll}
+                />
+                <label
+                    className="flex items-center gap-1 px-2 py-1 text-label uppercase tracking-widest font-mono rounded border bg-black/30 border-border"
+                    style={{ backdropFilter: 'blur(6px)' }}
+                    title="Apply a color palette to all attractors"
+                >
+                    <span className="text-ink-high/70">Palette</span>
+                    <select
+                        aria-label="Color palette"
+                        value={palette}
+                        onChange={(e) => onPaletteChange(e.target.value as PaletteName)}
+                        className="bg-transparent text-ink-high border-0 outline-none cursor-pointer font-mono text-label uppercase tracking-widest"
+                    >
+                        {(Object.keys(PALETTE_LABELS) as PaletteName[]).map((p) => (
+                            <option key={p} value={p} className="bg-black text-ink-high">
+                                {PALETTE_LABELS[p]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+                <ToolbarButton
+                    label="PNG"
+                    title="Save a PNG snapshot"
+                    onClick={onSnapshot}
+                />
+                <ToolbarButton
+                    label={recording ? '■ Stop' : '● Rec'}
+                    title={recording ? 'Stop recording and download WebM' : 'Record WebM video'}
+                    onClick={onToggleRecording}
+                    active={recording}
+                />
+                <ToolbarButton
+                    label="Tour"
+                    title="Start the narrative tour (N)"
+                    onClick={onToggleTour}
                 />
                 <ToolbarButton
                     label={theme === 'dark' ? '☽ Dark' : '☀ Light'}

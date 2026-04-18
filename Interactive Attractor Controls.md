@@ -52,6 +52,12 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **🌓 Wave 1 — Dark + Light Themes** | CSS custom properties on `:root[data-theme="..."]`; persisted to `localStorage`, honors `prefers-color-scheme` |
 | **📊 Wave 1 — Stats HUD** | FPS, active points, energy bar, phase — toggleable via `S` |
 | **🛡️ Wave 1 — Error Boundary** | "RECORD CORRUPTED" fallback with reload on any canvas failure |
+| **ℹ️ Wave 2 — Info Tooltips** | `InfoTooltip.tsx` reveals equations, Lyapunov, discoverer on tile-title hover/focus |
+| **🎨 Wave 2 — Palette Presets** | Toolbar dropdown applies Original / Neon / Pastel / Mono / Warm / Cold across all 10 attractors |
+| **🎲 Wave 2 — Randomizer** | Per-tile 🎲 button + global "🎲 All" (R shortcut); bounded color/rot/scale/speed |
+| **📸 Wave 2 — PNG + WebM Export** | Toolbar buttons (+ P / V shortcuts) via `snapshotPNG()` and `CanvasRecorder` |
+| **🗺️ Wave 2 — Narrative Tour** | `TourModal.tsx` — step through all 10 attractors with equations + blurb (N + arrow keys) |
+| **☀️ Wave 2 — Light theme tuning** | Glow 3→2, trailAlpha 0.65→0.72, gridIntensity 0.45→0.6, fadeAlpha 0.18→0.12; added `voidRGB` + `rectStroke` tokens |
 
 ---
 
@@ -1548,5 +1554,47 @@ But its missing out conversation from today, i want that into interatice control
 ### Planner Response
 
 Appended this session to the conversation log to keep the record complete.
+
+### User Input
+
+Where are we in the planning?
+
+### Planner Response
+
+Summarized: Wave 1 ✅ done and pushed. Wave 2 and Wave 3 still pending. Recommended starting Wave 2 with info tooltips + light-theme tuning.
+
+### User Input
+
+Maybe we do different branch as this one is too long
+
+### Planner Response
+
+Agreed — a cleaner PR boundary. Asked whether to branch off `main` or off `claude/refactor-visual-improvements-cP2Sr`, how to scope the branch, and proposed `claude/wave-2-features-and-theming` as a name.
+
+### User Input
+
+Go off the current and ill merge later the wave1 pr
+
+### Planner Response
+
+Created `claude/wave-2-features-and-theming` off the Wave 1 branch.
+
+### User Input
+
+Continue
+
+### Planner Response
+
+Executed Wave 2:
+
+1. `InfoTooltip.tsx` — hover/focus card with equations, Lyapunov, discoverer, blurb; wired into `AttractorTile` via a real `<button>` title with theme-aware focus outline and `aria-describedby`.
+2. `ControlPanel.tsx` — added a 🎲 Randomize button next to Flush in the Display section.
+3. `Toolbar.tsx` — expanded with 🎲 All, Palette dropdown, PNG, ● Rec / ■ Stop, Tour buttons; flex-wraps with `max-w-[95vw]` so it fits on narrow screens.
+4. `TourModal.tsx` — narrative walkthrough with ← → navigation and Esc to close.
+5. `TheVoid.tsx` — added `handleRandomize`, `handleRandomizeAll`, `handlePaletteChange`, `handleSnapshot`, `handleToggleRecording`, `handleToggleTour`; wired R/P/V/N keybindings to match the help modal.
+6. `themeTokens.ts` — added `voidRGB` and `rectStroke` tokens so the canvas reads theme-appropriate fade and tile borders; retuned light theme (glow 3→2, trailAlpha 0.65→0.72, gridIntensity 0.45→0.6, fadeAlpha 0.18→0.12, deeper `inkLow`).
+7. Fixed a React 19 "ref read during render" by deriving `tourTypes` from `initialAttractors` state via `useMemo`.
+
+`npm run lint`, `tsc --noEmit`, `npm run build`, and a dev-server smoke test (HTTP 200) all pass.
 
 All documentation is now consistent and ready for GitHub upload.
