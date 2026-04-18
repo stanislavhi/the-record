@@ -44,6 +44,14 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **🚿 Flush Button** | Clear grid trail history for individual tiles |
 | **📦 Refactor** | Extracted physics to `attractorCalculations.ts`, utils to `colorUtils.ts` & `projection.ts` |
 | **📚 Documentation** | README, ARCHITECTURE.md, WALKTHROUGH.md, CHANGELOG.md |
+| **🧩 Wave 1 — Component Split** | `TheVoid.tsx` broken into `AttractorGrid`, `AttractorTile`, `ControlPanel`, `Joystick`, `StatsHUD`, `HelpModal`, `Toolbar`, `IntroOverlay`, `PausedOverlay`, `ErrorBoundary` |
+| **🪝 Wave 1 — Custom Hooks** | `useAnimationFrame`, `usePointerDrag`, `useKeyboardShortcuts`, `useTheme`, `useFPS`, `useBreakpoint` |
+| **🧰 Wave 1 — Global Toolbar** | Pause, Reset All, Theme, Stats, Help — anchored to the bottom center |
+| **⌨️ Wave 1 — Keyboard Shortcuts** | `Space` pause, `Esc` reset, `?`/`H` help, `S` stats, `T` theme |
+| **👆 Wave 1 — Touch + Responsive** | Pointer Events for mouse/touch/pen; 2/3/5 column grid by breakpoint |
+| **🌓 Wave 1 — Dark + Light Themes** | CSS custom properties on `:root[data-theme="..."]`; persisted to `localStorage`, honors `prefers-color-scheme` |
+| **📊 Wave 1 — Stats HUD** | FPS, active points, energy bar, phase — toggleable via `S` |
+| **🛡️ Wave 1 — Error Boundary** | "RECORD CORRUPTED" fallback with reload on any canvas failure |
 
 ---
 
