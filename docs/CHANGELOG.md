@@ -8,6 +8,33 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
+## [1.4.0] — 2026-04-18 — Wave 3: Pre-W3 polish + audio + perf mode + worker scaffold
+
+Ships on `claude/wave-3-polish-and-heavy-hitters` (branched off Wave 2). Closes the three pre-Wave-3 audit gaps, then lands the heavy hitters: generative audio, performance-mode toggle, and the Web Worker physics scaffold.
+
+### Added — Audit gap fixes
+- **Recorder elapsed counter + 60s soft cap** — `CanvasRecorder` tracks `elapsedMs()` and accepts `maxMs` (default 60 000). The toolbar button label flips from `● Rec` to `■ 00:12` while recording; the recorder self-stops at 60 s and the file auto-downloads.
+- **Tour grid interaction** — `AttractorGrid` now accepts a `spotlightIndex`. When the Tour modal is open, the nine non-current tiles fade to `opacity: 0.22` (300 ms transition) while the focused attractor stays lit. `AttractorTile` accepts a `dimmed` prop that drives the transition.
+- **Last-focused tile + keyboard power-user shortcuts** — `AttractorTile` fires an `onTileFocus` on `focusCapture`/`pointerEnter`; `lastFocusedIndexRef` in `TheVoid` tracks it. New shortcuts wired through `useKeyboardShortcuts`: `-` / `=` adjust the focused tile's point count, and `Arrow` keys rotate its joystick. `Ctrl`/`Cmd + +/-` still pass through to the browser's native zoom.
+
+### Added — Wave 3 features
+- **Performance-mode toggle** — New toolbar `Perf` `<select>` (Low / Med / High) backed by `PERF_PRESETS` in `constants.ts`. Drives the render loop's `subSteps` and caps `shadowBlur` per frame. Selection persists in `localStorage` under `perfMode`.
+- **Generative audio synth** — `src/audio/AttractorSynth.ts` wires an `AudioContext` → master `GainNode` → `DynamicsCompressorNode` → destination, with per-attractor `OscillatorNode (sine)` → `BiquadFilterNode (lowpass)` → `StereoPannerNode` voices and a slow 0.1 Hz filter LFO. Each frame samples `points[0]` per attractor and maps `x → pitch (200–1200 Hz, log)`, `y → pan`, `z → filter cutoff`. Defaults to muted at volume `0.1`. Auto-ducks to silence with a 100 ms ramp when the sim is paused.
+- **Audio hook + panel** — `useAttractorSynth` manages lifecycle and gesture-gated start (tied to the CLICK-TO-MERGE handler, so autoplay policy is satisfied). `AudioPanel` surfaces a mute button + volume slider above the main toolbar. `M` toggles mute.
+- **Web Worker physics scaffold** — `src/workers/attractorWorker.ts` implements the full protocol: `init` (with attractor types + params + transferable Float32Array point buffers), `step` (returns per-attractor trajectory buffers as transferables), `setParams`, `setPointCount`, `setSubSteps`. `src/hooks/useAttractorWorker.ts` wraps the lifecycle. A `USE_WORKER` flag in `constants.ts` gates boot; defaults to `false` so the main-thread draw path stays the canonical pipeline. Flipping the flag boots the worker — consuming its trajectory buffers in the draw loop is deferred to a follow-up.
+
+### Changed
+- **`TheVoid.tsx`** — Reads the active `PERF_PRESETS` entry each frame for `subSteps` and an `effectiveGlow = min(tokens.glow, perf.shadowBlur)` clamp. Ducks the synth on pause. Receives a `synthRef` bridge so the render loop can update oscillator params without pulling the hook object through the RAF closure.
+- **`Toolbar.tsx`** — Adds `perfMode` + `recordElapsedLabel` props; renders the Perf select and the elapsed counter on the record button.
+- **`HelpModal.tsx`** — Already advertised `M` / `+ -` / Arrows; those rows are now backed by working handlers.
+
+### Notes
+- **Worker scope:** the worker runs physics correctly for all 10 attractor types (continuous + Henon) and returns full trajectory buffers per frame. The main-thread render loop still owns drawing + projection + grid writes. Migrating the draw step to consume worker output means rewriting the `attractors.current.forEach` block to read from the returned `Float32Array` instead of mutating points inline — intentionally deferred to keep this branch stable.
+- **Audio fatigue mitigations:** sine waves only, default mute, default volume `0.1`, slow filter LFO, duck-on-pause with a 100 ms ramp, `setTargetAtTime` smoothing on every oscillator param so per-frame updates don't click.
+- **Recorder cap:** hard-coded to 60 s. If you want a longer take, start a new recording.
+
+---
+
 ## [1.3.0] — 2026-04-18 — Wave 2: Feature add-ons + Theming polish
 
 Layers Wave 2 onto Wave 1: info tooltips, palette presets, randomizer, PNG/WebM export, a narrative tour, and a light-theme tuning pass.

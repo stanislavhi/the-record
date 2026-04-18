@@ -58,6 +58,12 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **📸 Wave 2 — PNG + WebM Export** | Toolbar buttons (+ P / V shortcuts) via `snapshotPNG()` and `CanvasRecorder` |
 | **🗺️ Wave 2 — Narrative Tour** | `TourModal.tsx` — step through all 10 attractors with equations + blurb (N + arrow keys) |
 | **☀️ Wave 2 — Light theme tuning** | Glow 3→2, trailAlpha 0.65→0.72, gridIntensity 0.45→0.6, fadeAlpha 0.18→0.12; added `voidRGB` + `rectStroke` tokens |
+| **⏱️ Wave 3 — Recorder cap + elapsed** | `CanvasRecorder` gained `elapsedMs`, `maxDurationMs`, auto-stop timer; Toolbar shows `■ 00:12` while recording, auto-stops at 60 s |
+| **🔦 Wave 3 — Tour spotlight** | Opening the Tour dims the nine non-current tiles to opacity 0.22 with a 300 ms transition; piped `spotlightIndex` through `AttractorGrid` → `AttractorTile` |
+| **🎯 Wave 3 — Last-focused tile + keys** | `lastFocusedIndexRef` tracks focus; `Minus`/`Equal`, `ArrowUp/Down/Left/Right`, `M` mute; Ctrl/Cmd passthrough; tour nav takes priority while open |
+| **⚡ Wave 3 — Perf mode** | Toolbar `Perf` select (Low / Med / High) swaps `SUB_STEPS` and `shadowBlur` from `PERF_PRESETS`; persisted to `localStorage('perfMode')` |
+| **🎵 Wave 3 — Generative audio synth** | `AttractorSynth` — 10 sine voices, lowpass filter + stereo pan + per-voice gain → master → compressor; shared 0.1 Hz LFO on cutoff; `x→pitch`, `y→pan`, `z→cutoff`; default muted, `M` toggles, ducks on pause |
+| **🧵 Wave 3 — Web Worker scaffold** | `attractorWorker.ts` (init/step/setParams/setPointCount protocol, `Transferable` Float32Array trajectories); `useAttractorWorker` lifecycle hook; gated by `USE_WORKER` flag in `constants.ts` (default `false`) |
 
 ---
 
@@ -1598,3 +1604,62 @@ Executed Wave 2:
 `npm run lint`, `tsc --noEmit`, `npm run build`, and a dev-server smoke test (HTTP 200) all pass.
 
 All documentation is now consistent and ready for GitHub upload.
+---
+
+## Session — 2026-04-18 — Wave 3 Polish + Heavy Hitters (Claude Opus 4.7, Claude Code on Web)
+
+### User Input
+
+Check if you missed something or something to be added before moving to wave 3
+
+### Planner Response
+
+Audited the shipped Waves 1+2 against the original plan. Three real gaps surfaced: the **narrative tour** was a plain modal with no on-grid spotlight; the **recorder** had no elapsed counter or soft cap (files could grow unbounded); the help modal advertised **`+/-` and arrow shortcuts** that had no handlers (and no "last-focused tile" concept to target). Also noted intentional deviations that are fine as-is (`ThemeContext` stayed as the local `useTheme` hook, palette dropdown lives in the Toolbar rather than ControlPanel). Recommended closing the three gaps on the same branch as Wave 3 rather than spinning a separate polish PR.
+
+### User Input
+
+(via AskUserQuestion) Picked: **all three audit gaps** (recorder elapsed + 60 s cap, last-focused + keyboard, tour spotlight) and **all three Wave 3 items** (generative audio synth, perf-mode toggle, web worker physics offload).
+
+### Planner Response
+
+Drafted the final plan as Stage A (audit fixes — small/isolated commits first) then Stage B (Wave 3 heavy hitters), with critical-files table, per-stage verification, and risk notes (worker message cost, audio autoplay + fatigue, `+/-` vs browser zoom, perf-mode persistence across machines). Branch: `claude/wave-3-polish-and-heavy-hitters` off the Wave 2 tip.
+
+### User Input
+
+(ExitPlanMode) Plan approved.
+
+### Planner Response
+
+Executed Stage A:
+
+1. **`src/utils/exportCanvas.ts`** — `CanvasRecorder` gained `startedAt`, `capTimer`, `onAutoStop`, `elapsedMs()`, `maxDurationMs()`; `start()` now accepts `{ fps, maxMs, onAutoStop }` with a `DEFAULT_MAX_RECORD_MS = 60_000`. Added `formatElapsed(ms)` → `mm:ss`.
+2. **`TheVoid.tsx`** + **`Toolbar.tsx`** — `recordElapsed` state ticked via 500 ms `setInterval` while recording; the record button label flips `● Rec` → `■ 00:12` and the recorder self-stops at 60 s.
+3. **`AttractorGrid.tsx`** + **`AttractorTile.tsx`** — added `spotlightIndex` + `onTileFocus` props; dimmed tiles drop to opacity 0.22 with `transition-opacity duration-300`. Tour drives `spotlightIndex` on index change and clears to `null` on close.
+4. **`useKeyboardShortcuts.ts`** — `lastFocusedIndexRef` (updated from `AttractorTile` `onFocusCapture`/`onPointerEnter`) wires into `Minus`/`Equal` (add/remove points on the focused tile, with Ctrl/Cmd passthrough so browser zoom still works) and `ArrowUp/Down/Left/Right` (rotate focused joystick by 0.1 rad per press). Arrow keys defer to the tour when the modal is open.
+
+Executed Stage B:
+
+5. **`constants.ts`** — confirmed `PERF_PRESETS` shape `{ low, med, high }` with `subSteps` + `shadowBlur`; added `USE_WORKER = false` feature flag.
+6. **Perf mode** — `perfMode` state in `TheVoid.tsx` (default `med`), persisted to `localStorage('perfMode')`, read per-frame via `perfModeRef`. `Toolbar.tsx` got a `Perf: Low / Med / High` select.
+7. **`src/audio/AttractorSynth.ts`** — Web Audio graph: 10 sine voices each `OscillatorNode → BiquadFilterNode (lowpass, Q 0.7) → StereoPannerNode → voice gain → master gain → DynamicsCompressorNode → destination`. Shared 0.1 Hz LFO (`±300 Hz`) modulates every voice's filter cutoff. API: `start(voiceCount)`, `update(index, {x,y,z})`, `setMuted`, `setVolume`, `duck(on)`, `stop()`. Mappings: `x → 200–1200 Hz` (log, via `tanh(x*0.15)`), `y → pan -1..+1` (via `tanh(y*0.25)`), `z → 250–4000 Hz` cutoff. Default muted, default volume 0.1.
+8. **`src/hooks/useAttractorSynth.ts`** — lazy lifecycle: `useMemo` constructs the synth; `start()` ties into the merge click gesture for autoplay-policy compliance. Returns `{ synth, muted, volume, start, toggleMute, setVolume, duck }`.
+9. **`src/components/AudioPanel.tsx`** — floating panel above the toolbar (`bottom-16`): ♪ mute toggle + 0–1 volume range. Also wired `M` to `toggleMute` in `useKeyboardShortcuts`.
+10. **TheVoid render loop** — reads `PERF_PRESETS[perfModeRef.current]` for `subSteps` + `shadowBlur` each frame; every 4 frames samples `points[0]` from each attractor and calls `synth.update()` via a `synthRef` indirection (avoids capturing the hook object in the long-lived render effect — React 19 `react-hooks/refs` compliance). Pause-effect calls `audio.duck(paused)` so the master gain fades to 0 in ~100 ms.
+11. **`src/workers/attractorWorker.ts`** — off-thread physics with `/// <reference lib="webworker" />`. Message protocol: `init` (seed attractors), `step` (run `subSteps` of `calculateAttractorStep` + `isPointStable` + `resetPoint`, post back `{ type: 'frame', trajectories: Float32Array[] }` with transferred buffers), `setParams` (partial attractor updates), `setPointCount`, `setSubSteps`. Handles the Hénon discrete-step interval separately.
+12. **`src/hooks/useAttractorWorker.ts`** — constructs `new Worker(new URL('../workers/attractorWorker.ts', import.meta.url), { type: 'module' })` when `USE_WORKER` is true; exposes `postStep`, `syncParams`, `syncPoints`, `syncSubSteps`, `onFrame`, `isReady`, `dispose`. `USE_WORKER` ships `false` — the worker is stable infrastructure but the main thread still owns the render pipeline. Wiring the worker's trajectory buffers into the draw step is a deliberate follow-up (flagged in CHANGELOG so the gap stays visible).
+
+### User Input
+
+(continued)
+
+### Planner Response
+
+Stage B4 wrap-up — lint + typecheck + build all clean; worker bundled to a separate `attractorWorker-*.js` chunk (~2.6 kB) as expected. Fixed two typecheck errors along the way: `AttractorSynth` had unused `this.compressor`/`this.lfoGain` instance fields (deleted — the local consts were still used in node wiring), and the worker needed `/// <reference lib="webworker" />` to pull in `DedicatedWorkerGlobalScope` without leaking WebWorker types into the main app.
+
+Refreshed all docs:
+
+- **`docs/CHANGELOG.md`** — new `[1.4.0] — 2026-04-18 — Wave 3` entry with Audit fixes (A1/A2/A3), Wave 3 features (B1/B2/B3), Changed, and Notes sections (worker honestly flagged as scaffolded + render-draw-pipeline swap pending).
+- **`docs/WALKTHROUGH.md`** — added Perf row to the toolbar table, `■ 00:12` record-button note, new keyboard shortcuts (`M`, `+/-`, arrows), tour-spotlight paragraph, full "Generative Audio" section (signal chain + mappings + fatigue mitigations), "Performance Mode" preset table.
+- **`docs/ARCHITECTURE.md`** — added `AudioPanel.tsx` to components, `useAttractorSynth`/`useAttractorWorker` to hooks, new `audio/` and `workers/` top-level directory entries; updated `constants.ts` row to mention `USE_WORKER`, `exportCanvas.ts` row to mention the 60 s soft cap + elapsed tracking, TourModal row to call out the grid spotlight.
+- **`README.md`** — Perf mode, recorder elapsed counter, audio synth, and tour spotlight added to Features; `M`, `+/-`, Arrow shortcuts added to the shortcut table; `AudioPanel.tsx`, `audio/`, `workers/`, `useAttractorSynth.ts`, `useAttractorWorker.ts` added to the directory tree.
+- **`Interactive Attractor Controls.md`** — milestone rows for each Wave 3 deliverable + this session log.

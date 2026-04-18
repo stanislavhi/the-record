@@ -12,6 +12,11 @@ export const ISO_X = Math.atan(1 / Math.sqrt(2));
 
 export const SUB_STEPS = 20;
 
+// Feature flag — when true, physics runs in a Web Worker with trajectory
+// buffers transferred per frame. Default off: main-thread path is battle-tested.
+// Flip to enable offload; toolbar stays on the main-thread draw pipeline either way.
+export const USE_WORKER = false;
+
 export const LAYOUT = {
     marginX: 20,
     marginTop: 30,

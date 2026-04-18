@@ -8,10 +8,12 @@ import {
     GRID_SIZE,
     INK_COLOR,
     LAYOUT,
+    PERF_PRESETS,
     POINT_LIMITS,
-    SUB_STEPS,
+    USE_WORKER,
     createInitialAttractors,
 } from './constants';
+import type { PerfMode } from './types';
 import { hexToRgb, hslToRgb, rgbToHsl } from './utils/colorUtils';
 import { project } from './utils/projection';
 import { calculateAttractorStep, isPointStable, resetPoint } from './attractors/attractorCalculations';
@@ -22,6 +24,7 @@ import Toolbar from './Toolbar';
 import IntroOverlay from './IntroOverlay';
 import PausedOverlay from './PausedOverlay';
 import TourModal from './TourModal';
+import AudioPanel from './AudioPanel';
 import { useBreakpoint, getGridCols } from '../hooks/useBreakpoint';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useTheme } from '../hooks/useTheme';
@@ -29,7 +32,9 @@ import { useFPS } from '../hooks/useFPS';
 import { getThemeTokens } from '../utils/themeTokens';
 import { PALETTES, type PaletteName } from '../utils/palettes';
 import { randomizeAttractor } from '../utils/randomParams';
-import { snapshotPNG, CanvasRecorder, downloadBlob } from '../utils/exportCanvas';
+import { snapshotPNG, CanvasRecorder, downloadBlob, formatElapsed } from '../utils/exportCanvas';
+import { useAttractorSynth } from '../hooks/useAttractorSynth';
+import { useAttractorWorker } from '../hooks/useAttractorWorker';
 
 const buildOverlayItems = (attractors: Attractor[]): OverlayItem[] =>
     attractors
@@ -61,6 +66,8 @@ const TheVoid = () => {
     const colsRef = useRef(0);
     const rowsRef = useRef(0);
     const recorderRef = useRef<CanvasRecorder | null>(null);
+    const lastFocusedIndexRef = useRef<number>(0);
+    const perfModeRef = useRef<PerfMode>('med');
 
     const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
     const [speeds, setSpeeds] = useState<number[]>(() =>
@@ -73,17 +80,46 @@ const TheVoid = () => {
     const [phase, setPhase] = useState('AWAITING MERGE');
     const [energyState, setEnergyState] = useState(100);
     const [palette, setPalette] = useState<PaletteName>('original');
+    const [perfMode, setPerfMode] = useState<PerfMode>(() => {
+        if (typeof window === 'undefined') return 'med';
+        const saved = window.localStorage.getItem('perfMode');
+        return saved === 'low' || saved === 'med' || saved === 'high' ? saved : 'med';
+    });
     const [recording, setRecording] = useState(false);
+    const [recordElapsed, setRecordElapsed] = useState(0);
     const [tourOpen, setTourOpen] = useState(false);
     const [tourIndex, setTourIndex] = useState(0);
 
     const { theme, toggleTheme } = useTheme();
     const breakpoint = useBreakpoint();
     const { fps, tick: tickFPS } = useFPS();
+    const audio = useAttractorSynth(initialAttractors.length);
+    const synthRef = useRef(audio.synth);
+    useEffect(() => { synthRef.current = audio.synth; }, [audio.synth]);
+
+    // Physics worker — scaffolded and gated by USE_WORKER. When enabled the
+    // worker boots with an init payload and reports ready. The main-thread
+    // render loop still owns physics + drawing; the worker's trajectory
+    // buffers are exposed for a follow-up draw-pipeline swap.
+    useAttractorWorker({
+        enabled: USE_WORKER,
+        attractors: initialAttractors,
+        subSteps: PERF_PRESETS[perfMode].subSteps,
+        henonStepInterval: CANVAS_STYLE.henonStepInterval,
+    });
 
     useEffect(() => { themeRef.current = theme; }, [theme]);
-    useEffect(() => { pausedRef.current = paused; }, [paused]);
+    useEffect(() => {
+        pausedRef.current = paused;
+        audio.duck(paused);
+    }, [paused, audio]);
     useEffect(() => { isIntroRef.current = intro; }, [intro]);
+    useEffect(() => {
+        perfModeRef.current = perfMode;
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('perfMode', perfMode);
+        }
+    }, [perfMode]);
 
     const totalPoints = useMemo(
         () => overlayItems.reduce((sum, it) => sum + it.pointCount, 0),
@@ -162,6 +198,7 @@ const TheVoid = () => {
         isIntroRef.current = false;
         setIntro(false);
         setPhase('PHASE 10: ACTIVE');
+        audio.start();
         for (let i = 0; i < 150; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 15 + 5;
@@ -173,7 +210,7 @@ const TheVoid = () => {
                 true
             );
         }
-    }, [spawnParticle]);
+    }, [spawnParticle, audio]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -182,6 +219,7 @@ const TheVoid = () => {
         if (!ctx) return;
 
         let energyStateTick = 0;
+        let audioTick = 0;
 
         const render = () => {
             if (pausedRef.current) {
@@ -190,6 +228,9 @@ const TheVoid = () => {
             }
             tickFPS();
             const tokens = getThemeTokens(themeRef.current);
+            const perf = PERF_PRESETS[perfModeRef.current];
+            const subSteps = perf.subSteps;
+            const effectiveGlow = Math.min(tokens.glow, perf.shadowBlur);
 
             ctx.fillStyle = `rgba(${tokens.voidRGB}, ${tokens.fadeAlpha})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -209,6 +250,15 @@ const TheVoid = () => {
             const cols = colsRef.current;
             const rows = rowsRef.current;
 
+            audioTick += 1;
+            const synth = synthRef.current;
+            if (audioTick % 4 === 0 && synth.isStarted) {
+                attractors.current.forEach((attractor, idx) => {
+                    const pt = attractor.points[0];
+                    if (pt) synth.update(idx, { x: pt.x, y: pt.y, z: pt.z });
+                });
+            }
+
             attractors.current.forEach((attractor) => {
                 if (attractor.rect) {
                     ctx.strokeStyle = tokens.rectStroke;
@@ -226,14 +276,14 @@ const TheVoid = () => {
                         ctx.strokeStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, ${tokens.trailAlpha})`;
                         ctx.lineWidth = CANVAS_STYLE.trailLineWidth;
                         ctx.lineCap = 'round';
-                        ctx.shadowBlur = tokens.glow;
+                        ctx.shadowBlur = effectiveGlow;
                         ctx.shadowColor = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 1.0)`;
                     }
 
                     const prevP = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
                     if (attractor.type !== 'henon') ctx.moveTo(prevP.x, prevP.y);
 
-                    for (let step = 0; step < SUB_STEPS; step++) {
+                    for (let step = 0; step < subSteps; step++) {
                         if (attractor.type === 'henon') {
                             if (step % CANVAS_STYLE.henonStepInterval === 0) {
                                 calculateAttractorStep(attractor.type, pt, attractor.params);
@@ -259,7 +309,7 @@ const TheVoid = () => {
                                     );
                                     gridColors.current[gx][gy] = pt.color;
                                 }
-                                ctx.shadowBlur = tokens.glow;
+                                ctx.shadowBlur = effectiveGlow;
                                 ctx.fillStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, 1.0)`;
                                 ctx.fillRect(p.x, p.y, CANVAS_STYLE.henonDotSize, CANVAS_STYLE.henonDotSize);
                                 ctx.shadowBlur = 0;
@@ -488,6 +538,10 @@ const TheVoid = () => {
         for (let i = 0; i < attractors.current.length; i++) handleRandomize(i);
     }, [handleRandomize]);
 
+    const handlePerfModeChange = useCallback((next: PerfMode) => {
+        setPerfMode(next);
+    }, []);
+
     const handlePaletteChange = useCallback((next: PaletteName) => {
         setPalette(next);
         const colors = PALETTES[next];
@@ -513,13 +567,32 @@ const TheVoid = () => {
         if (rec.isRecording()) {
             rec.stop().then((blob) => {
                 setRecording(false);
+                setRecordElapsed(0);
                 if (blob) downloadBlob(blob);
             });
         } else {
-            const started = rec.start(canvas);
-            if (started) setRecording(true);
+            const started = rec.start(canvas, {
+                onAutoStop: (blob) => {
+                    setRecording(false);
+                    setRecordElapsed(0);
+                    if (blob) downloadBlob(blob);
+                },
+            });
+            if (started) {
+                setRecording(true);
+                setRecordElapsed(0);
+            }
         }
     }, []);
+
+    useEffect(() => {
+        if (!recording) return;
+        const id = window.setInterval(() => {
+            const rec = recorderRef.current;
+            if (rec) setRecordElapsed(rec.elapsedMs());
+        }, 500);
+        return () => window.clearInterval(id);
+    }, [recording]);
 
     const handleToggleTour = useCallback(() => {
         setTourOpen((v) => {
@@ -540,6 +613,10 @@ const TheVoid = () => {
     const handleToggleStats = useCallback(() => setStatsVisible((v) => !v), []);
     const handleToggleHelp = useCallback(() => setHelpOpen((v) => !v), []);
 
+    const handleTileFocus = useCallback((index: number) => {
+        lastFocusedIndexRef.current = index;
+    }, []);
+
     const shortcuts = useMemo(
         () => ({
             Space: (e: KeyboardEvent) => {
@@ -559,6 +636,37 @@ const TheVoid = () => {
             KeyR: () => handleRandomizeAll(),
             KeyP: () => handleSnapshot(),
             KeyV: () => handleToggleRecording(),
+            KeyM: () => audio.toggleMute(),
+            Minus: (e: KeyboardEvent) => {
+                if (e.ctrlKey || e.metaKey) return;
+                e.preventDefault();
+                handlePointsChange(lastFocusedIndexRef.current, -1);
+            },
+            Equal: (e: KeyboardEvent) => {
+                if (e.ctrlKey || e.metaKey) return;
+                e.preventDefault();
+                handlePointsChange(lastFocusedIndexRef.current, 1);
+            },
+            ArrowUp: (e: KeyboardEvent) => {
+                if (tourOpen) return;
+                e.preventDefault();
+                handleRotate(lastFocusedIndexRef.current, { dx: 0, dy: -5 });
+            },
+            ArrowDown: (e: KeyboardEvent) => {
+                if (tourOpen) return;
+                e.preventDefault();
+                handleRotate(lastFocusedIndexRef.current, { dx: 0, dy: 5 });
+            },
+            ArrowLeft: (e: KeyboardEvent) => {
+                if (tourOpen) return;
+                e.preventDefault();
+                handleRotate(lastFocusedIndexRef.current, { dx: -5, dy: 0 });
+            },
+            ArrowRight: (e: KeyboardEvent) => {
+                if (tourOpen) return;
+                e.preventDefault();
+                handleRotate(lastFocusedIndexRef.current, { dx: 5, dy: 0 });
+            },
         }),
         [
             handleResetAll,
@@ -569,6 +677,9 @@ const TheVoid = () => {
             handleRandomizeAll,
             handleSnapshot,
             handleToggleRecording,
+            handlePointsChange,
+            handleRotate,
+            audio,
             toggleTheme,
             helpOpen,
             tourOpen,
@@ -586,6 +697,7 @@ const TheVoid = () => {
             <AttractorGrid
                 items={overlayItems}
                 speeds={speeds}
+                spotlightIndex={tourOpen ? tourIndex : null}
                 onRotate={handleRotate}
                 onScaleChange={handleScaleChange}
                 onSpeedChange={handleSpeedChange}
@@ -593,6 +705,7 @@ const TheVoid = () => {
                 onColorChange={handleColorChange}
                 onFlush={handleFlush}
                 onRandomize={handleRandomize}
+                onTileFocus={handleTileFocus}
             />
 
             <PausedOverlay visible={paused} />
@@ -605,13 +718,26 @@ const TheVoid = () => {
                 visible={statsVisible}
             />
 
+            <div data-no-merge className="pointer-events-none fixed bottom-16 inset-x-0 flex justify-center z-toolbar">
+                <div className="pointer-events-auto">
+                    <AudioPanel
+                        muted={audio.muted}
+                        volume={audio.volume}
+                        onToggleMute={audio.toggleMute}
+                        onVolumeChange={audio.setVolume}
+                    />
+                </div>
+            </div>
+
             <div data-no-merge>
                 <Toolbar
                     paused={paused}
                     theme={theme}
                     statsVisible={statsVisible}
                     palette={palette}
+                    perfMode={perfMode}
                     recording={recording}
+                    recordElapsedLabel={recording ? formatElapsed(recordElapsed) : null}
                     onTogglePause={handleTogglePause}
                     onResetAll={handleResetAll}
                     onToggleTheme={toggleTheme}
@@ -620,6 +746,7 @@ const TheVoid = () => {
                     onToggleTour={handleToggleTour}
                     onRandomizeAll={handleRandomizeAll}
                     onPaletteChange={handlePaletteChange}
+                    onPerfModeChange={handlePerfModeChange}
                     onSnapshot={handleSnapshot}
                     onToggleRecording={handleToggleRecording}
                 />

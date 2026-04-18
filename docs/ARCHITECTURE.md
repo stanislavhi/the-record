@@ -50,11 +50,12 @@ the-record/
 │   │   ├── HelpModal.tsx         # Keyboard shortcut legend
 │   │   ├── Toolbar.tsx           # Global Pause / Reset / Randomize / Palette / Export / Tour / Theme / Stats / Help
 │   │   ├── InfoTooltip.tsx       # Hover card with equations + metadata
-│   │   ├── TourModal.tsx         # Narrative walkthrough of all 10 attractors
+│   │   ├── TourModal.tsx         # Narrative walkthrough of all 10 attractors (grid spotlight via dim prop)
 │   │   ├── IntroOverlay.tsx      # "CLICK TO MERGE" + loading dots
 │   │   ├── PausedOverlay.tsx     # Dimmed pause state
+│   │   ├── AudioPanel.tsx        # Mute + volume for the generative synth
 │   │   ├── ErrorBoundary.tsx     # Readable canvas-failure fallback
-│   │   ├── constants.ts          # Attractor configs + LAYOUT / CANVAS_STYLE / Z_INDEX / KEYBINDINGS / PERF_PRESETS
+│   │   ├── constants.ts          # Attractor configs + LAYOUT / CANVAS_STYLE / Z_INDEX / KEYBINDINGS / PERF_PRESETS / USE_WORKER
 │   │   ├── types.ts              # Shared TypeScript interfaces
 │   │   ├── attractors/
 │   │   │   ├── attractorCalculations.ts  # Physics per type
@@ -68,12 +69,18 @@ the-record/
 │   │   ├── useKeyboardShortcuts.ts
 │   │   ├── useTheme.ts           # localStorage + matchMedia
 │   │   ├── useFPS.ts             # Rolling FPS counter
-│   │   └── useBreakpoint.ts      # mobile / tablet / desktop
+│   │   ├── useBreakpoint.ts      # mobile / tablet / desktop
+│   │   ├── useAttractorSynth.ts  # Lifecycle + gesture-gated start for AttractorSynth
+│   │   └── useAttractorWorker.ts # Lifecycle for the physics Web Worker (USE_WORKER flag)
+│   ├── audio/
+│   │   └── AttractorSynth.ts     # Master gain → compressor → destination; per-voice osc → filter → panner
+│   ├── workers/
+│   │   └── attractorWorker.ts    # Off-thread physics; init/step/setParams/setPointCount protocol
 │   ├── utils/
 │   │   ├── themeTokens.ts        # Canvas-facing token bridge
 │   │   ├── palettes.ts           # Color palette presets (6 × 10 RGB)
 │   │   ├── randomParams.ts       # Bounded randomizer for color/rot/scale/speed
-│   │   └── exportCanvas.ts       # PNG snapshot + CanvasRecorder (WebM)
+│   │   └── exportCanvas.ts       # PNG snapshot + CanvasRecorder (WebM, 60 s soft cap, elapsed tracking)
 │   ├── App.tsx                   # ErrorBoundary + TheVoid
 │   ├── main.tsx                  # Entry point
 │   └── index.css                 # Global styles + CSS variables (dark + light)
