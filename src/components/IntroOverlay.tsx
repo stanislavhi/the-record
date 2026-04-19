@@ -2,13 +2,35 @@ import { memo } from 'react';
 
 interface IntroOverlayProps {
     loading: boolean;
+    onMerge: () => void;
 }
 
-const IntroOverlay = memo(({ loading }: IntroOverlayProps) => (
-    <div className="absolute inset-0 z-overlay flex flex-col items-center justify-center pointer-events-none select-none">
-        <div className="flex flex-col items-center gap-4 fade-in">
-            <div className="text-2xl font-mono tracking-[0.3em] text-ink-high animate-pulse">
+const IntroOverlay = memo(({ loading, onMerge }: IntroOverlayProps) => (
+    <div
+        className="fixed inset-0 flex flex-col items-center justify-center select-none cursor-pointer"
+        style={{
+            zIndex: 9999,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: '#0a0a0a',
+        }}
+        onClick={onMerge}
+    >
+        <div className="flex flex-col items-center gap-6 fade-in">
+            <div
+                className="text-3xl font-mono tracking-[0.4em] animate-pulse"
+                style={{
+                    color: 'var(--color-ink-high)',
+                    textShadow: '0 0 20px var(--color-ink-high), 0 0 40px var(--color-ink-high)',
+                }}
+            >
                 CLICK TO MERGE
+            </div>
+            <div
+                className="text-sm font-mono tracking-[0.15em] opacity-40"
+                style={{ color: 'var(--color-ink-high)' }}
+            >
+                the record awaits
             </div>
             {loading && (
                 <div className="flex gap-2" aria-live="polite" aria-label="Loading">
@@ -23,3 +45,4 @@ const IntroOverlay = memo(({ loading }: IntroOverlayProps) => (
 
 IntroOverlay.displayName = 'IntroOverlay';
 export default IntroOverlay;
+

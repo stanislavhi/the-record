@@ -342,20 +342,13 @@ const TheVoid = () => {
             mouse.current.active = false;
             lastPos.current = null;
         };
-        const handleClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement | null;
-            if (target && target.closest('[data-no-merge]')) return;
-            if (isIntroRef.current) triggerMerge();
-        };
         window.addEventListener('pointermove', handlePointerMove);
         window.addEventListener('pointerout', handlePointerOut);
-        window.addEventListener('click', handleClick, { capture: true });
         return () => {
             window.removeEventListener('pointermove', handlePointerMove);
             window.removeEventListener('pointerout', handlePointerOut);
-            window.removeEventListener('click', handleClick, { capture: true });
         };
-    }, [triggerMerge]);
+    }, []);
 
     const handleRotate = useCallback((index: number, delta: { dx: number; dy: number }) => {
         const attr = attractors.current[index];
@@ -471,11 +464,12 @@ const TheVoid = () => {
         <div className="relative w-full h-full overflow-hidden" data-theme={theme}>
             <canvas ref={canvasRef} className="absolute inset-0 z-canvas" />
 
-            {intro && <IntroOverlay loading={false} />}
+            {intro && <IntroOverlay loading={false} onMerge={triggerMerge} />}
 
             <AttractorGrid
                 items={overlayItems}
                 speeds={speeds}
+                locked={intro}
                 onRotate={handleRotate}
                 onScaleChange={handleScaleChange}
                 onSpeedChange={handleSpeedChange}
