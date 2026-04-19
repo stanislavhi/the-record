@@ -22,14 +22,27 @@ An interactive visualization of chaotic attractors — mathematical systems that
 
 - **10 Chaotic Attractors** — Lorenz, Rossler, Henon, Chua, Sprott, Four-Wing, Rabinovich, Halvorsen, Dadras, Aizawa
 - **Real-time 3D Rendering** — Canvas-based simulation with isometric projection
-- **Interactive Per-Tile Controls** (visible on hover):
-  - 🕹️ **Joystick Rotation** — Drag to rotate X/Y axes
-  - 🔍 **Scale Slider** — Zoom in/out
+- **Interactive Per-Tile Controls** (visible on hover / focus):
+  - 🕹️ **Joystick Rotation** — Drag to rotate X/Y axes (now with live needle indicator)
+  - 🔍 **Scale Slider** — Zoom in/out with live readout
   - ➕➖ **Point Count** — Add or remove simulation points (1–50)
   - ⚡ **Speed Control** — Adjust simulation timestep
   - 🎨 **Color Picker** — Change attractor colors dynamically
+  - 🎲 **Randomize** — Instantly randomize color, rotation, scale, and speed
   - 🚿 **Flush** — Clear trail history for a tile
-- **Multi-point Simulation** — Each attractor runs 10 parallel points with coherent color gradients
+  - ℹ️ **Info Tooltip** — Hover the tile title for equations, Lyapunov exponent, and discoverer
+- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, Palette presets, **Perf mode (Low/Med/High)**, PNG export, **WebM recorder with elapsed counter + 60 s soft cap**, Tour, Theme toggle, Stats overlay, Help modal
+- **Generative audio synth** — 10 oscillator voices mapped from each attractor (`x → pitch`, `y → pan`, `z → filter cutoff`), default muted, `M` to toggle, ducks on pause
+- **Narrative tour with grid spotlight** — opening the Tour dims the other nine tiles so the current attractor stays lit
+- **Narrative Tour** — Guided walkthrough of all 10 attractors (toolbar "Tour" or `N`)
+- **PNG + WebM Export** — Snapshot the canvas as PNG or record a WebM video
+- **6 Palette Presets** — Original, Neon, Pastel, Mono, Warm, Cold — applied to all 10 attractors
+- **Dark + Light themes** — CSS-variable-driven, tuned glow/alpha per theme, persisted to `localStorage`, honors `prefers-color-scheme`
+- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour, `M` mute, `+/-` point count on focused tile, arrows rotate focused joystick
+- **Touch Support** — Pointer Events across joystick and canvas
+- **Responsive Grid** — 2 / 3 / 5 columns across mobile / tablet / desktop
+- **Accessibility** — ARIA labels, visible focus rings, keyboard-reachable controls
+- **Multi-point Simulation** — Each attractor runs parallel points with coherent color gradients
 - **Persistent Grid Trails** — Colored trails fade over time, creating visual memory
 
 ## 🚀 Getting Started
@@ -57,12 +70,30 @@ npm run preview
 ## 🎮 Usage
 
 1. **Click anywhere** to trigger the merge and start the simulation
-2. **Hover over any tile** to reveal the control panel
-3. **Drag the joystick** to rotate the attractor in 3D space
-4. **Adjust sliders** for scale and speed
+2. **Hover over any tile** (or tab to it) to reveal the control panel
+3. **Drag the joystick** to rotate the attractor in 3D space — the needle tracks rotation live
+4. **Adjust sliders** for scale and speed (values displayed alongside each slider)
 5. **Click +/−** to add or remove simulation points
 6. **Pick a color** to change the attractor's hue
-7. **Click Flush** to clear the trail history
+7. **Click Flush** to clear just that tile's trail history
+8. **Use the bottom toolbar or keyboard** for global actions:
+
+### ⌨️ Keyboard shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Pause / resume simulation |
+| `Esc` | Reset all trails (or close open modal) |
+| `?` / `H` | Toggle the keyboard-shortcut help modal |
+| `S` | Toggle the stats overlay (FPS / points / energy) |
+| `T` | Toggle dark / light theme |
+| `R` | Randomize all attractors |
+| `P` | Save PNG snapshot of the canvas |
+| `V` | Start / stop WebM recording (auto-stops at 60 s) |
+| `N` | Open / close the narrative tour |
+| `M` | Mute / unmute the generative audio synth |
+| `+` / `-` | Add / remove a point on the last-focused tile |
+| `Arrows` | Rotate the last-focused tile's joystick |
 
 ## 🧮 The Attractors
 
@@ -84,16 +115,47 @@ npm run preview
 ```
 src/
 ├── components/
-│   ├── TheVoid.tsx          # Main canvas & overlay component
-│   ├── HUD.tsx              # Heads-up display
-│   ├── constants.ts         # Attractor configurations
-│   ├── types.ts             # TypeScript interfaces
+│   ├── TheVoid.tsx            # Slim orchestrator — canvas + hooks + handlers
+│   ├── AttractorGrid.tsx      # Overlay loop over attractors
+│   ├── AttractorTile.tsx      # Per-attractor frame (title + joystick + panel)
+│   ├── ControlPanel.tsx       # Physics/Display grouped controls
+│   ├── Joystick.tsx           # Pointer-drag rotation + live needle
+│   ├── StatsHUD.tsx           # FPS, point count, energy, phase
+│   ├── HelpModal.tsx          # Keyboard shortcut legend
+│   ├── Toolbar.tsx            # Global pause/reset/randomize/palette/export/tour/theme
+│   ├── InfoTooltip.tsx        # Hover card with equations + metadata
+│   ├── TourModal.tsx          # Narrative walkthrough of all 10 attractors
+│   ├── IntroOverlay.tsx       # "CLICK TO MERGE" with loading dots
+│   ├── PausedOverlay.tsx      # Dimmed pause state
+│   ├── AudioPanel.tsx         # Volume + mute for the generative synth
+│   ├── ErrorBoundary.tsx      # Readable fallback if canvas fails
+│   ├── constants.ts           # Attractor configs + LAYOUT/CANVAS_STYLE/Z_INDEX/KEYBINDINGS/PERF_PRESETS
+│   ├── types.ts               # Shared TypeScript interfaces
 │   ├── attractors/
-│   │   └── attractorCalculations.ts  # Physics calculations
+│   │   ├── attractorCalculations.ts  # Physics per type
+│   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer metadata
 │   └── utils/
-│       ├── colorUtils.ts    # RGB/HSL conversions
-│       └── projection.ts    # 3D → 2D isometric projection
-├── App.tsx
+│       ├── colorUtils.ts      # RGB ↔ HSL conversions
+│       └── projection.ts      # 3D → 2D isometric projection
+├── hooks/
+│   ├── useAnimationFrame.ts   # RAF loop with pause support
+│   ├── usePointerDrag.ts      # Pointer Events (touch + mouse)
+│   ├── useKeyboardShortcuts.ts
+│   ├── useTheme.ts            # localStorage + matchMedia theme
+│   ├── useFPS.ts              # Rolling FPS counter
+│   ├── useBreakpoint.ts       # Responsive mobile/tablet/desktop
+│   ├── useAttractorSynth.ts   # Lifecycle + gesture-gated audio start
+│   └── useAttractorWorker.ts  # Lifecycle for the physics Web Worker
+├── audio/
+│   └── AttractorSynth.ts      # Web Audio graph (10 sine voices + filter LFO + compressor)
+├── workers/
+│   └── attractorWorker.ts     # Off-thread physics (init / step / setParams / setPointCount)
+├── utils/
+│   ├── themeTokens.ts         # Canvas-facing theme token bridge
+│   ├── palettes.ts            # Color palette presets
+│   ├── randomParams.ts        # Randomizer bounds
+│   └── exportCanvas.ts        # PNG snapshot + WebM recorder
+├── App.tsx                    # ErrorBoundary + TheVoid
 └── main.tsx
 ```
 
@@ -104,8 +166,9 @@ src/
 | UI Framework | React 19 |
 | Language | TypeScript 5.9 |
 | Build Tool | Vite 7 |
-| Styling | Tailwind CSS 4 |
-| Rendering | HTML5 Canvas |
+| Styling | Tailwind CSS 4 (CSS-variable theme) |
+| Rendering | HTML5 Canvas 2D |
+| Input | Pointer Events (mouse + touch) |
 
 ## 📚 Documentation
 

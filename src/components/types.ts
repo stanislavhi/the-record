@@ -1,5 +1,3 @@
-// Types for TheVoid component
-
 export interface RGB {
     r: number;
     g: number;
@@ -33,13 +31,10 @@ export type AttractorType =
     | 'chua'
     | 'sprott'
     | 'four_wing'
-    | 'tsucs'
     | 'rabinovich'
     | 'halvorsen'
-    | 'chen'
     | 'dadras'
-    | 'aizawa'
-    | 'thomas';
+    | 'aizawa';
 
 export interface AttractorParams {
     dt: number;
@@ -68,15 +63,33 @@ export interface Particle {
 
 export interface OverlayItem {
     index: number;
-    type: string;
+    type: AttractorType;
     rect: Rect;
     rotation: Rotation3D;
     color: RGB;
     scale: number;
+    pointCount: number;
 }
 
-export interface MouseState {
-    x: number;
-    y: number;
-    active: boolean;
+export type Theme = 'dark' | 'light';
+
+export type PerfMode = 'low' | 'med' | 'high';
+
+export interface ThemeTokens {
+    void: string;
+    voidRGB: string;
+    rectStroke: string;
+    inkHigh: string;
+    inkLow: string;
+    grid: string;
+    glow: number;
+    trailAlpha: number;
+    gridIntensity: number;
+    fadeAlpha: number;
+}
+
+export interface PerfConfig {
+    subSteps: number;
+    maxPoints: number;
+    shadowBlur: number;
 }
