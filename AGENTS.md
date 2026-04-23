@@ -53,6 +53,7 @@ Add to `src/index.css`:
 
 ## Architecture Pattern
 
+### V1 (prototype)
 ```
 App.tsx
   └─ TheVoid.tsx           ← single component owns both canvas + overlay
@@ -62,6 +63,32 @@ App.tsx
        ├─ useEffect → requestAnimationFrame loop
        ├─ <canvas>         ← covers full viewport
        └─ <div overlay>    ← React controls rendered on top
+```
+
+Fine for a prototype — becomes a 500+ line monolith fast. Once you have working physics + overlay, split into focused components and hooks.
+
+### V2 (Wave 1 split — recommended for anything shippable)
+```
+App.tsx
+  └─ ErrorBoundary
+       └─ TheVoid.tsx               ← orchestrator (refs + state + handlers)
+            ├─ <canvas>             ← owned by TheVoid, drawn in RAF loop
+            ├─ AttractorGrid        ← maps overlay items
+            │    └─ AttractorTile   ← per-attractor frame
+            │         ├─ Joystick
+            │         └─ ControlPanel   (Physics + Display sections)
+            ├─ IntroOverlay / PausedOverlay
+            ├─ StatsHUD             ← FPS / points / energy / phase
+            ├─ Toolbar              ← Pause / Reset / Theme / Stats / Help
+            └─ HelpModal            ← keyboard-shortcut legend
+
+src/hooks/
+    useAnimationFrame   — RAF loop with pause support
+    usePointerDrag      — Pointer Events (mouse + touch + pen)
+    useKeyboardShortcuts
+    useTheme            — localStorage + prefers-color-scheme
+    useFPS              — rolling 500 ms window
+    useBreakpoint       — 2/3/5 cols by viewport
 ```
 
 ### Key pattern: refs for simulation state
@@ -110,6 +137,16 @@ The persistent HDR grid effect is the visual heart of the project:
 
 ### Phase 5 — Interactive overlay
 > *"Add a hover-revealed control panel over each tile. Controls: joystick for 3D rotation (drag X/Y), scale slider, point count +/−, speed slider, color picker, flush button. Use React state for the visibility, and refs/callbacks to apply changes to the simulation."*
+
+### Phase 6 — Split the monolith + UX reach
+Once the prototype works, the single component will be 400–500 lines. Split it before adding more features.
+
+> *"Extract the RAF loop into `useAnimationFrame(callback, { paused })`. Replace mouse handlers with Pointer Events in a `usePointerDrag` hook so touch works. Split TheVoid into TheVoid (orchestrator) → AttractorGrid → AttractorTile → Joystick + ControlPanel. Add a global Toolbar with Pause/Reset/Theme/Stats/Help. Add `useKeyboardShortcuts` for Space/Esc/?/S/T. Add `useTheme` backed by CSS custom properties on `:root[data-theme]` so the canvas can read `getComputedStyle(document.documentElement).getPropertyValue('--void')` each frame."*
+
+Gotchas:
+- React 19's `react-hooks/refs` + `react-hooks/purity` rules forbid ref writes and `performance.now()` during render — sync refs inside `useEffect`.
+- Keep initial simulation state in a single `useState(() => createInitial())` snapshot so both refs and derived state read from the same source without triggering the "ref read during render" lint.
+- The canvas render loop cannot read Tailwind classes. Build a `getThemeTokens()` helper that reads CSS variables from `document.documentElement` and recall it each frame (cheap) or on theme change.
 
 ---
 

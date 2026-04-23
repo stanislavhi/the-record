@@ -44,6 +44,14 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **🚿 Flush Button** | Clear grid trail history for individual tiles |
 | **📦 Refactor** | Extracted physics to `attractorCalculations.ts`, utils to `colorUtils.ts` & `projection.ts` |
 | **📚 Documentation** | README, ARCHITECTURE.md, WALKTHROUGH.md, CHANGELOG.md |
+| **🧩 Wave 1 — Component Split** | `TheVoid.tsx` broken into `AttractorGrid`, `AttractorTile`, `ControlPanel`, `Joystick`, `StatsHUD`, `HelpModal`, `Toolbar`, `IntroOverlay`, `PausedOverlay`, `ErrorBoundary` |
+| **🪝 Wave 1 — Custom Hooks** | `useAnimationFrame`, `usePointerDrag`, `useKeyboardShortcuts`, `useTheme`, `useFPS`, `useBreakpoint` |
+| **🧰 Wave 1 — Global Toolbar** | Pause, Reset All, Theme, Stats, Help — anchored to the bottom center |
+| **⌨️ Wave 1 — Keyboard Shortcuts** | `Space` pause, `Esc` reset, `?`/`H` help, `S` stats, `T` theme |
+| **👆 Wave 1 — Touch + Responsive** | Pointer Events for mouse/touch/pen; 2/3/5 column grid by breakpoint |
+| **🌓 Wave 1 — Dark + Light Themes** | CSS custom properties on `:root[data-theme="..."]`; persisted to `localStorage`, honors `prefers-color-scheme` |
+| **📊 Wave 1 — Stats HUD** | FPS, active points, energy bar, phase — toggleable via `S` |
+| **🛡️ Wave 1 — Error Boundary** | "RECORD CORRUPTED" fallback with reload on any canvas failure |
 
 ---
 
@@ -1424,5 +1432,121 @@ The README now includes the full AI generation note with the chat history link:
 >
 > See [Interactive Attractor Controls.md](Interactive%20Attractor%20Controls.md) for the complete conversation log.
 ```
+
+---
+
+## Session — 2026-04-17/18 — Wave 1 Refactor (Claude Opus 4.7, Claude Code on Web)
+
+### User Input
+
+create a branch for some refactor and some visual improvements. give me some ideas of this we can improve and also to add, like better styling or idk, plan and speak to me
+
+### Planner Response
+
+Walked the repo — `TheVoid.tsx` was a 533-line monolith mixing rendering, physics, pointer input, overlays, and particle effects; controls were 9–11 px desktop-only, no ARIA, no keyboard, no touch, and the commented-out `HUD.tsx` was dead code. Pitched a three-part menu:
+
+- **Refactor** — split TheVoid into AttractorGrid / AttractorTile / ControlPanel / Joystick / StatsHUD / HelpModal / ErrorBoundary; extract hooks (`useAnimationFrame`, `usePointerDrag`, `useAttractorSimulation`, `useKeyboardShortcuts`, `useTheme`, `useFPS`); consolidate `LAYOUT`/`CANVAS_STYLE`/`Z_INDEX`/`KEYBINDINGS` into `constants.ts`; drop the `forceUpdate` anti-pattern.
+- **Visual polish** — regrouped control panel (Physics + Display), transitions, joystick angle indicator, loading dots on "CLICK TO MERGE", pause overlay, reset-all, stats HUD, help modal, typography scale.
+- **UX reach** — Pointer Events for touch, responsive 2/3/5 column grid, keyboard shortcuts, ARIA labels and focus rings.
+
+Asked the user to pick scope, theme direction, and whether to resurrect the HUD.
+
+### User Input
+
+(via AskUserQuestion) Size: **Full menu**. Theme: **Build a second theme (light/alt)**. HUD: **Resurrect as optional stats panel**.
+
+### User Input
+
+what more would you add?
+
+### Planner Response
+
+Proposed a second round of add-ons: PNG export + WebM recorder, randomizer + color palette presets, info tooltips + narrative tour, generative audio synth (Web Audio, one oscillator per attractor, mapped from x/y/z), performance-mode toggle backed by a Web Worker for physics.
+
+### User Input
+
+(via AskUserQuestion) Picked: **PNG export + recorder**, **Randomizer + palettes**, **Info tooltips + narrative tour**, **Generative audio synth**, **Performance mode + workers**. Passed on presets/URL sharing, zen/fullscreen, gravity wells/cursor trails.
+
+### User Input
+
+show me the plan?
+
+### Planner Response
+
+Wrote the full plan: 7 parts (Refactor / Visual / UX / Add-ons / Audio / Perf+Workers / Second theme), 3 execution waves, critical-file table, verification checklist, and explicit risk flags on audio autoplay, worker message protocol, recorder file size, and light-theme glow tuning. Branch: `claude/refactor-visual-improvements-cP2Sr`.
+
+### User Input
+
+Stop when you finish wave 1
+
+### Planner Response
+
+Executed Wave 1 end-to-end:
+
+1. Pruned `types.ts` — removed `MouseState` and unused `AttractorType` entries (`tsucs`, `thomas`, `chen`); narrowed `OverlayItem.type` to `AttractorType`; added `Theme`, `PerfMode`, `ThemeTokens`, `PerfConfig`.
+2. Expanded `constants.ts` — added `LAYOUT`, `CANVAS_STYLE`, `Z_INDEX`, `KEYBINDINGS`, `PERF_PRESETS`, and limit objects for points/speed/scale.
+3. Removed the dead calculators (`tsucs`, `thomas`, `chen`) from `attractorCalculations.ts`.
+4. Created `attractors/attractorInfo.ts` — equations, discoverer, year, Lyapunov, blurb for all 10 attractors (scaffolded for Wave 2 tooltips).
+5. Built `utils/themeTokens.ts`, `utils/palettes.ts`, `utils/randomParams.ts`, `utils/exportCanvas.ts` (scaffolded).
+6. Wrote hooks: `useAnimationFrame`, `usePointerDrag`, `useKeyboardShortcuts`, `useTheme`, `useFPS`, `useBreakpoint`.
+7. Built components: `ErrorBoundary`, `Joystick` (needle + tilt), `ControlPanel` (Physics + Display), `AttractorTile`, `AttractorGrid`, `StatsHUD`, `HelpModal`, `Toolbar`, `IntroOverlay`, `PausedOverlay`.
+8. Rewrote `TheVoid.tsx` as a slim orchestrator (~440 lines) — refs for simulation state, state for UI, `useEffect` sync for every ref read by the render loop.
+9. Simplified `App.tsx` to `<ErrorBoundary><TheVoid /></ErrorBoundary>` and deleted `HUD.tsx`.
+10. Rewired `tailwind.config.js` colors to CSS custom properties; added font/z-index tokens; added `:root[data-theme="dark"|"light"]` variable blocks + keyframes in `index.css`.
+
+Hit three React 19 lint walls and fixed each:
+- `react-hooks/refs` — moved ref syncing into `useEffect`.
+- `react-hooks/purity` — stopped calling `performance.now()` during render in `useFPS`.
+- `react-hooks/refs` on state-from-ref init — introduced `const [initialAttractors] = useState(() => createInitialAttractors())` as the single source both the ref and derived `speeds` state read from.
+
+`npm run lint`, `tsc --noEmit`, `npm run build`, and a dev-server smoke test all passed. Committed as `8748705` (30 files, +1799/-631). Push failed with 403.
+
+### User Input
+
+How can i fix the proxy
+
+### Planner Response
+
+Explained that the 403 comes from the local git proxy (`127.0.0.1:<port>`) — it's a GitHub App token authorization issue on the Claude Code on Web side, not something I can fix from inside the sandbox. Suggested re-authorizing the GitHub integration.
+
+### User Input
+
+while i fix this, update the documentation please
+
+### Planner Response
+
+Updated `README.md` (toolbar / themes / keyboard / touch / responsive / a11y in Features, keyboard shortcut table in Usage, rewrote Architecture tree) and `docs/ARCHITECTURE.md` (new directory tree, component composition ASCII diagram, Hooks table, State Model with the refs + state sync pattern, Theming section with CSS-variable blocks, updated rendering pipeline, Wave 2/3 roadmap). Context compacted mid-stream.
+
+### User Input
+
+(stop-hook) 2 unpushed commits on `claude/refactor-visual-improvements-cP2Sr`.
+
+### Planner Response
+
+Finished the doc pass — `docs/WALKTHROUGH.md` rewritten with Toolbar / Keyboard / Pause overlay / Stats HUD / Themes / Touch+Responsive / Error boundary sections; `docs/CHANGELOG.md` gained a `[1.2.0]` entry with Added / Changed / Removed / Fixed / Notes. Committed as `9cc6371`.
+
+### User Input
+
+Try to push again
+
+### Planner Response
+
+`git push -u origin claude/refactor-visual-improvements-cP2Sr` succeeded — both `8748705` and `9cc6371` are now on origin.
+
+### User Input
+
+You forgot something no? Some docs are not updated, for example interactive controls markown
+
+### Planner Response
+
+Right — extended the milestone table in `Interactive Attractor Controls.md` with 8 Wave 1 rows (component split, hooks, toolbar, keyboard, touch/responsive, themes, stats HUD, error boundary) and updated `AGENTS.md` with a V2 split-architecture diagram and a Phase 6 prompting strategy covering React 19's `react-hooks/refs` + `react-hooks/purity` gotchas. Committed as `c84fca0` and pushed.
+
+### User Input
+
+But its missing out conversation from today, i want that into interatice control, fix
+
+### Planner Response
+
+Appended this session to the conversation log to keep the record complete.
 
 All documentation is now consistent and ready for GitHub upload.
