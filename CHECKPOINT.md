@@ -34,7 +34,7 @@ Branch: `claude/wave-4-page-2-original-attractors`, cut from the Wave 3 tip (`b4
 | `claude/refactor-visual-improvements-cP2Sr` | [#1](https://github.com/stanislavhi/the-record/pull/1) | Open, Wave 1 |
 | `claude/wave-2-features-and-theming` | [#2](https://github.com/stanislavhi/the-record/pull/2) | Open, Wave 2 |
 | `claude/wave-3-polish-and-heavy-hitters` | [#3](https://github.com/stanislavhi/the-record/pull/3) | Open, Wave 3 |
-| `claude/wave-4-page-2-original-attractors` | — | Pushed; **no PR opened** (user has not asked for one) |
+| `claude/wave-4-page-2-original-attractors` | [#4](https://github.com/stanislavhi/the-record/pull/4) | Open, Wave 4 (title/body rewritten — it was opened with Wave 1's text) |
 
 ## Open issues
 
@@ -47,7 +47,7 @@ Branch: `claude/wave-4-page-2-original-attractors`, cut from the Wave 3 tip (`b4
 
 ## The exact next step
 
-Nothing pending. If the user asks for a PR for Wave 4: title `feat: Wave 4 — Pages 2 + 3: ten originals, a menagerie, page group + vet script`, body from `docs/CHANGELOG.md` `[1.5.0]` (sections: Page 3 menagerie / Page 2 originals / Engine generalisation / Vetting / Docs / Verification), end with the standard trailer.
+Nothing pending. PR #4 is open for Wave 4 with the correct title and body. Watch for review comments if asked.
 
 ## Verification state at checkpoint
 
