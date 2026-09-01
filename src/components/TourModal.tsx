@@ -70,6 +70,11 @@ const TourModal = memo((props: TourModalProps) => {
                 <div className="text-value opacity-70 mt-1">
                     {info.discoverer} · {info.year} · Lyapunov {info.lyapunov}
                 </div>
+                {info.original && (
+                    <div className="mt-1 text-label font-mono uppercase tracking-widest opacity-60">
+                        Page 2 original — invented for this project, not from the literature
+                    </div>
+                )}
                 <div className="mt-3 flex flex-col gap-1 font-mono text-value leading-snug">
                     {info.equations.map((eq) => (
                         <div key={eq}>{eq}</div>

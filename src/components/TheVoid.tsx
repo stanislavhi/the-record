@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Attractor, OverlayItem, Particle, RGB, Theme } from './types';
+import type { Attractor, AttractorPage, AttractorType, OverlayItem, Particle, RGB, Theme } from './types';
 import {
     CANVAS_STYLE,
     DECAY_RATE,
@@ -8,15 +8,17 @@ import {
     GRID_SIZE,
     INK_COLOR,
     LAYOUT,
+    PAGE_STORAGE_KEY,
     PERF_PRESETS,
     POINT_LIMITS,
     USE_WORKER,
     createInitialAttractors,
+    readSavedPage,
 } from './constants';
 import type { PerfMode } from './types';
 import { hexToRgb, hslToRgb, rgbToHsl } from './utils/colorUtils';
 import { project } from './utils/projection';
-import { calculateAttractorStep, isPointStable, resetPoint } from './attractors/attractorCalculations';
+import { calculateAttractorStep, isDiscrete, isPointStable, resetPoint } from './attractors/attractorCalculations';
 import AttractorGrid from './AttractorGrid';
 import StatsHUD from './StatsHUD';
 import HelpModal from './HelpModal';
@@ -60,7 +62,12 @@ const TheVoid = () => {
     const isIntroRef = useRef<boolean>(true);
     const pausedRef = useRef<boolean>(false);
     const themeRef = useRef<Theme>('dark');
-    const [initialAttractors] = useState(() => createInitialAttractors());
+    const [page, setPage] = useState<AttractorPage>(readSavedPage);
+    const [initialAttractors] = useState(() => createInitialAttractors(page));
+    const [pageTypes, setPageTypes] = useState<AttractorType[]>(() =>
+        initialAttractors.map((a) => a.type)
+    );
+    const pageRef = useRef<AttractorPage>(page);
     const attractors = useRef<Attractor[]>(initialAttractors);
     const animationRef = useRef<number>(0);
     const colsRef = useRef(0);
@@ -100,7 +107,9 @@ const TheVoid = () => {
     // Physics worker — scaffolded and gated by USE_WORKER. When enabled the
     // worker boots with an init payload and reports ready. The main-thread
     // render loop still owns physics + drawing; the worker's trajectory
-    // buffers are exposed for a follow-up draw-pipeline swap.
+    // buffers are exposed for a follow-up draw-pipeline swap. It is seeded
+    // with the page that was active on mount; a page switch does not re-init
+    // it (deferred with the rest of the worker wiring).
     useAttractorWorker({
         enabled: USE_WORKER,
         attractors: initialAttractors,
@@ -115,6 +124,12 @@ const TheVoid = () => {
     }, [paused, audio]);
     useEffect(() => { isIntroRef.current = intro; }, [intro]);
     useEffect(() => {
+        pageRef.current = page;
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(PAGE_STORAGE_KEY, page);
+        }
+    }, [page]);
+    useEffect(() => {
         perfModeRef.current = perfMode;
         if (typeof window !== 'undefined') {
             window.localStorage.setItem('perfMode', perfMode);
@@ -126,10 +141,7 @@ const TheVoid = () => {
         [overlayItems]
     );
 
-    const tourTypes = useMemo(
-        () => initialAttractors.map((a) => a.type),
-        [initialAttractors]
-    );
+    const tourTypes = pageTypes;
 
     const syncOverlay = useCallback(() => {
         setOverlayItems(buildOverlayItems(attractors.current));
@@ -197,7 +209,7 @@ const TheVoid = () => {
         if (!isIntroRef.current) return;
         isIntroRef.current = false;
         setIntro(false);
-        setPhase('PHASE 10: ACTIVE');
+        setPhase(pageRef.current === 'original' ? 'PAGE 2: ORIGINALS' : 'PHASE 10: ACTIVE');
         audio.start();
         for (let i = 0; i < 150; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -270,8 +282,11 @@ const TheVoid = () => {
                     ctx.clip();
                 }
 
+                // Discrete maps (Hénon, Ripple) iterate in place and are drawn as dots.
+                const discrete = isDiscrete(attractor.type);
+
                 attractor.points.forEach((pt) => {
-                    if (attractor.type !== 'henon') {
+                    if (!discrete) {
                         ctx.beginPath();
                         ctx.strokeStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, ${tokens.trailAlpha})`;
                         ctx.lineWidth = CANVAS_STYLE.trailLineWidth;
@@ -281,10 +296,10 @@ const TheVoid = () => {
                     }
 
                     const prevP = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
-                    if (attractor.type !== 'henon') ctx.moveTo(prevP.x, prevP.y);
+                    if (!discrete) ctx.moveTo(prevP.x, prevP.y);
 
                     for (let step = 0; step < subSteps; step++) {
-                        if (attractor.type === 'henon') {
+                        if (discrete) {
                             if (step % CANVAS_STYLE.henonStepInterval === 0) {
                                 calculateAttractorStep(attractor.type, pt, attractor.params);
                             }
@@ -298,7 +313,7 @@ const TheVoid = () => {
 
                         const p = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
 
-                        if (attractor.type === 'henon') {
+                        if (discrete) {
                             if (step % CANVAS_STYLE.henonStepInterval === 0) {
                                 const gx = Math.floor(p.x / GRID_SIZE);
                                 const gy = Math.floor(p.y / GRID_SIZE);
@@ -330,7 +345,7 @@ const TheVoid = () => {
                         }
                     }
 
-                    if (attractor.type !== 'henon') {
+                    if (!discrete) {
                         ctx.stroke();
                         ctx.shadowBlur = 0;
                     }
@@ -553,6 +568,28 @@ const TheVoid = () => {
         );
     }, [applyColorToAttractor]);
 
+    /**
+     * Swap the whole grid between Page 1 (classics) and Page 2 (originals).
+     * Rebuilds the attractor list from scratch, clears trails, re-lays out the
+     * tiles, and resets per-tile UI state (speeds, palette select, focus, tour).
+     */
+    const handlePageChange = useCallback((next: AttractorPage) => {
+        if (next === page) return;
+        const fresh = createInitialAttractors(next);
+        attractors.current = fresh;
+        lastFocusedIndexRef.current = 0;
+        setPage(next);
+        setPageTypes(fresh.map((a) => a.type));
+        setSpeeds(fresh.map((a) => a.params.dt ?? 0.01));
+        setPalette('original');
+        setTourIndex(0);
+        if (!isIntroRef.current) {
+            setPhase(next === 'original' ? 'PAGE 2: ORIGINALS' : 'PHASE 10: ACTIVE');
+        }
+        handleResetAll();
+        resizeCanvas();
+    }, [page, handleResetAll, resizeCanvas]);
+
     const handleSnapshot = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -637,6 +674,14 @@ const TheVoid = () => {
             KeyP: () => handleSnapshot(),
             KeyV: () => handleToggleRecording(),
             KeyM: () => audio.toggleMute(),
+            Digit1: (e: KeyboardEvent) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                handlePageChange('classic');
+            },
+            Digit2: (e: KeyboardEvent) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                handlePageChange('original');
+            },
             Minus: (e: KeyboardEvent) => {
                 if (e.ctrlKey || e.metaKey) return;
                 e.preventDefault();
@@ -679,6 +724,7 @@ const TheVoid = () => {
             handleToggleRecording,
             handlePointsChange,
             handleRotate,
+            handlePageChange,
             audio,
             toggleTheme,
             helpOpen,
@@ -738,6 +784,8 @@ const TheVoid = () => {
                     perfMode={perfMode}
                     recording={recording}
                     recordElapsedLabel={recording ? formatElapsed(recordElapsed) : null}
+                    page={page}
+                    onPageChange={handlePageChange}
                     onTogglePause={handleTogglePause}
                     onResetAll={handleResetAll}
                     onToggleTheme={toggleTheme}

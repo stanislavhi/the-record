@@ -39,7 +39,11 @@ export const project = (
     centerX: number,
     centerY: number
 ): { x: number; y: number } => {
-    let px = x, py = y, pz = z;
+    // 0. Re-centre systems whose attractor does not sit at the origin
+    const center = attractor.center;
+    let px = center ? x - center.x : x;
+    let py = center ? y - center.y : y;
+    let pz = center ? z - center.z : z;
 
     // 1. Object Rotation (Individual)
     const rotation: Rotation3D = attractor.rotation || { x: 0, y: 0, z: 0 };

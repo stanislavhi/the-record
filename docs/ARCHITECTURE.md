@@ -50,16 +50,18 @@ the-record/
 │   │   ├── HelpModal.tsx         # Keyboard shortcut legend
 │   │   ├── Toolbar.tsx           # Global Pause / Reset / Randomize / Palette / Export / Tour / Theme / Stats / Help
 │   │   ├── InfoTooltip.tsx       # Hover card with equations + metadata
-│   │   ├── TourModal.tsx         # Narrative walkthrough of all 10 attractors (grid spotlight via dim prop)
+│   │   ├── TourModal.tsx         # Narrative walkthrough of the active page's 10 attractors (grid spotlight via dim prop)
 │   │   ├── IntroOverlay.tsx      # "CLICK TO MERGE" + loading dots
 │   │   ├── PausedOverlay.tsx     # Dimmed pause state
 │   │   ├── AudioPanel.tsx        # Mute + volume for the generative synth
 │   │   ├── ErrorBoundary.tsx     # Readable canvas-failure fallback
-│   │   ├── constants.ts          # Attractor configs + LAYOUT / CANVAS_STYLE / Z_INDEX / KEYBINDINGS / PERF_PRESETS / USE_WORKER
+│   │   ├── constants.ts          # Page 1 + Page 2 attractor configs + LAYOUT / CANVAS_STYLE / Z_INDEX / KEYBINDINGS / PERF_PRESETS / USE_WORKER
 │   │   ├── types.ts              # Shared TypeScript interfaces
 │   │   ├── attractors/
-│   │   │   ├── attractorCalculations.ts  # Physics per type
-│   │   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer (used by InfoTooltip + Tour)
+│   │   │   ├── attractorCalculations.ts  # Classic physics + merged calculator map + DISCRETE_TYPES
+│   │   │   ├── originalCalculations.ts   # Page 2 — ten systems invented for The Record (Wave 4)
+│   │   │   ├── calculatorTypes.ts        # Delta / AttractorCalculator types shared by both files
+│   │   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer for all 20 (used by InfoTooltip + Tour)
 │   │   └── utils/
 │   │       ├── colorUtils.ts     # RGB ↔ HSL / hex conversions
 │   │       └── projection.ts     # 3D → 2D isometric projection
@@ -84,7 +86,9 @@ the-record/
 │   ├── App.tsx                   # ErrorBoundary + TheVoid
 │   ├── main.tsx                  # Entry point
 │   └── index.css                 # Global styles + CSS variables (dark + light)
-├── docs/                         # Documentation
+├── scripts/
+│   └── vet-attractors.mjs        # Bundles the real TS via esbuild; measures Lyapunov / bounds / resets per attractor
+├── docs/                         # Documentation (+ docs/sessions/ plan + session archive)
 ├── index.html                    # HTML shell with meta tags
 └── vite.config.ts
 ```
@@ -134,14 +138,17 @@ const particles   = useRef<Particle[]>([]);
 const grid        = useRef<number[][]>([]);
 const gridColors  = useRef<(RGB | null)[][]>([]);
 const energyRef   = useRef<number>(100);
-const attractors  = useRef<Attractor[]>(initialAttractors);
+const attractors  = useRef<Attractor[]>(initialAttractors);   // replaced wholesale on a page switch
 const isIntroRef  = useRef<boolean>(true);
 const pausedRef   = useRef<boolean>(false);
 const themeRef    = useRef<Theme>('dark');
+const pageRef     = useRef<AttractorPage>(page);
 ```
 
 **React state (drives UI):**
 ```typescript
+const [page, setPage]                 = useState<AttractorPage>(readSavedPage);   // 'classic' | 'original'
+const [pageTypes, setPageTypes]       = useState<AttractorType[]>([...]);        // feeds the Tour
 const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
 const [speeds, setSpeeds]             = useState<number[]>([...]);
 const [paused, setPaused]             = useState(false);
@@ -154,6 +161,8 @@ const [energyState, setEnergyState]   = useState(100);
 
 State and ref are kept in sync via `useEffect(() => { ref.current = state; }, [state])` — this keeps the render loop reading the latest value without touching the ref during render (React 19 rule).
 
+**Page switch (Wave 4).** `handlePageChange(next)` is the one place the attractor list is replaced: it calls `createInitialAttractors(next)`, assigns the result to `attractors.current`, resets `lastFocusedIndexRef`, updates `page` / `pageTypes` / `speeds` / `palette` / `tourIndex` / `phase`, clears the grid via `handleResetAll()`, then calls `resizeCanvas()` to compute fresh tile rects and re-sync the overlay. The render loop never holds a reference to an individual attractor across frames, so swapping the array is safe mid-animation.
+
 ---
 
 ## `constants.ts`
@@ -165,9 +174,11 @@ Attractor configurations plus central config objects:
 | `LAYOUT` | Margins, gap, responsive `breakpoints` + column counts |
 | `CANVAS_STYLE` | Fade/trail alphas, shadowBlur, intervals, particle settings |
 | `Z_INDEX` | `canvas` → `overlay` → `hud` → `toolbar` → `modal` scale |
-| `KEYBINDINGS` | Central keycode map |
+| `KEYBINDINGS` | Central keycode map (incl. `page1: 'Digit1'`, `page2: 'Digit2'`) |
 | `PERF_PRESETS` | low / med / high `{ subSteps, maxPoints, shadowBlur }` (Wave 3) |
 | `POINT_LIMITS`, `SPEED_LIMITS`, `SCALE_LIMITS` | Control ranges |
+| `createClassicAttractors()` / `createOriginalAttractors()` | Page 1 / Page 2 rosters (Wave 4) |
+| `createInitialAttractors(page)`, `readSavedPage()`, `PAGE_STORAGE_KEY`, `DEFAULT_PAGE` | Page selection + `localStorage` persistence |
 
 | Rendering constant | Value | Purpose |
 |-------------------|-------|---------|
@@ -186,9 +197,27 @@ Stateless physics functions:
 calculateAttractorStep(type, point, params) → { dx, dy, dz }
 isPointStable(point)                         → boolean
 resetPoint(point)                            → void
+isDiscrete(type)                             → boolean   // DISCRETE_TYPES = { henon, ripple }
 ```
 
-Each of the 10 `AttractorType` values maps to either differential equations (continuous flow) or a recurrence relation (discrete — Hénon).
+Each of the 20 `AttractorType` values maps to either differential equations (continuous flow, integrated by forward Euler with `dt` baked into the returned delta) or a recurrence relation (discrete map — the calculator mutates the point in place and returns a zero delta). The ten classics live in `attractorCalculations.ts`; the ten Wave 4 originals live in `originalCalculations.ts` and are merged into one `calculators` record.
+
+### `originalCalculations.ts` (Page 2)
+
+| Type | Mechanism | Twist |
+|------|-----------|-------|
+| `sigil` | Lorenz | gain term `(ρ − z)` → `b·cos(wz)` |
+| `wick` | Lorenz | z pump `xy` → `\|xy\|` (one-sided) |
+| `cinder` | Chua | piecewise diode → `tanh` saturation |
+| `gyre` | Dadras | `+ k·cos(x)` ripple on dz |
+| `moth` | jerk-like | thermostat `b − a·y·tanh(y) − cz` |
+| `tidepool` | rotation + radial pumping | radius set by `z − d·r²`, z drained by `x²`, fed by `e·y` |
+| `ossuary` | Nosé–Hoover | `+ k·sin(wx)` forcing on dy |
+| `ripple` | discrete map | sine/cosine folds with a delayed `z = e·sin(x)` echo |
+| `anvil` | jerk | `k·sin(x)` kick vs `b·x³` brake |
+| `reed` | jerk | square-root restoring force `k·sgn(x)√\|x\|` |
+
+Parameters, scales and `center` offsets come from `scripts/vet-attractors.mjs`, which bundles these files with esbuild and integrates each system the way the render loop does. Run `npm run vet:attractors` after touching any coefficient.
 
 ---
 
@@ -196,6 +225,7 @@ Each of the 10 `AttractorType` values maps to either differential equations (con
 
 ```
 [x, y, z]
+   → subtract attractor.center (if set — keeps off-origin orbits in the tile)
    → rotate by attractor.rotation (Euler X/Y/Z)
    → apply global isometric camera (45° Y, 35.26° X)
    → scale by attractor.scale
@@ -272,15 +302,21 @@ interface Attractor {
     offset: { x: number; y: number };
     rotation?: Rotation3D;
     rect?: Rect;
+    center?: Rotation3D;        // attractor-space point placed at the tile centre (Wave 4)
 }
 
 interface Point3D  { x: number; y: number; z: number; color: RGB; }
 interface RGB       { r: number; g: number; b: number; }
 interface Rotation3D { x: number; y: number; z: number; }
 
-type AttractorType =
+type ClassicAttractorType =
     'lorenz' | 'rossler' | 'henon' | 'chua' | 'sprott' |
     'four_wing' | 'rabinovich' | 'halvorsen' | 'dadras' | 'aizawa';
+type OriginalAttractorType =
+    'sigil' | 'wick' | 'cinder' | 'gyre' | 'moth' |
+    'tidepool' | 'ossuary' | 'ripple' | 'anvil' | 'reed';
+type AttractorType = ClassicAttractorType | OriginalAttractorType;
+type AttractorPage = 'classic' | 'original';
 
 interface OverlayItem {
     index: number;
@@ -298,15 +334,12 @@ type PerfMode  = 'low' | 'med' | 'high';
 
 ---
 
-## Wave 2 / Wave 3 Roadmap
+## Wave Roadmap
 
-Bringing up the scaffolding for later work that is not yet wired in:
-
-| Module | Purpose | Status |
-|--------|---------|--------|
-| `utils/palettes.ts` | Neon / pastel / mono / warm / cold color palette presets | Scaffolded |
-| `utils/randomParams.ts` | Bounded random color / rotation / scale / speed | Scaffolded |
-| `utils/exportCanvas.ts` | `snapshotPNG` + `CanvasRecorder` (WebM via `MediaRecorder`) | Scaffolded |
-| `components/attractors/attractorInfo.ts` | Equations, Lyapunov exponents, discoverers | Content ready |
-| Wave 2 | Randomizer / palettes / PNG + WebM / info tooltips / narrative tour / light theme tuning | Pending |
-| Wave 3 | Generative audio synth / performance-mode preset / Web Worker physics | Pending |
+| Wave | Scope | Status |
+|------|-------|--------|
+| Wave 1 | Component split / hooks / toolbar / themes / keyboard / touch | Shipped |
+| Wave 2 | Randomizer / palettes / PNG + WebM / info tooltips / narrative tour / light theme tuning | Shipped |
+| Wave 3 | Audit fixes / generative audio synth / performance-mode preset / Web Worker scaffold | Shipped (worker gated off by `USE_WORKER`) |
+| Wave 4 | Page 2 — ten original attractors / page toggle / vetting script / `center` + `isDiscrete` generalisation | Shipped |
+| Later | Worker draw-pipeline swap (+ re-init on page switch) / `useAttractorSimulation` extraction / integrator pass for Page 1 systems that go periodic under Euler | Pending |

@@ -2,6 +2,7 @@
 import type { AttractorParams, AttractorType } from '../components/types';
 import {
     calculateAttractorStep,
+    isDiscrete,
     isPointStable,
     resetPoint,
 } from '../components/attractors/attractorCalculations';
@@ -65,6 +66,7 @@ const runStep = () => {
 
     attractors.forEach((attr, aIdx) => {
         const pointCount = attr.pointCount;
+        const discrete = isDiscrete(attr.type);
         const buf = new Float32Array(pointCount * subSteps * 3);
         for (let p = 0; p < pointCount; p++) {
             const base = p * 3;
@@ -75,7 +77,7 @@ const runStep = () => {
                 color: { r: 0, g: 0, b: 0 },
             };
             for (let s = 0; s < subSteps; s++) {
-                if (attr.type === 'henon') {
+                if (discrete) {
                     if (s % henonStepInterval === 0) {
                         calculateAttractorStep(attr.type, pt, attr.params);
                     }

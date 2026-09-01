@@ -1,12 +1,8 @@
-import type { AttractorType, AttractorParams, Point3D } from '../types';
+import type { AttractorType, AttractorParams, ClassicAttractorType, Point3D } from '../types';
+import type { AttractorCalculator, Delta } from './calculatorTypes';
+import { originalCalculators } from './originalCalculations';
 
-interface Delta {
-    dx: number;
-    dy: number;
-    dz: number;
-}
-
-type AttractorCalculator = (pt: Point3D, params: AttractorParams) => Delta;
+export type { AttractorCalculator, Delta } from './calculatorTypes';
 
 const lorenz: AttractorCalculator = (pt, params) => {
     const { sigma, rho, beta, dt } = params;
@@ -102,7 +98,7 @@ const aizawa: AttractorCalculator = (pt, params) => {
     };
 };
 
-const calculators: Record<AttractorType, AttractorCalculator> = {
+const classicCalculators: Record<ClassicAttractorType, AttractorCalculator> = {
     lorenz,
     rossler,
     henon,
@@ -114,6 +110,19 @@ const calculators: Record<AttractorType, AttractorCalculator> = {
     dadras,
     aizawa,
 };
+
+const calculators: Record<AttractorType, AttractorCalculator> = {
+    ...classicCalculators,
+    ...originalCalculators,
+};
+
+/**
+ * Discrete maps iterate in place and are drawn as scattered dots rather than
+ * a stroked trail. Everything else is a continuous flow integrated by Euler.
+ */
+export const DISCRETE_TYPES: ReadonlySet<AttractorType> = new Set<AttractorType>(['henon', 'ripple']);
+
+export const isDiscrete = (type: AttractorType): boolean => DISCRETE_TYPES.has(type);
 
 export const calculateAttractorStep = (
     type: AttractorType,

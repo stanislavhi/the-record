@@ -24,7 +24,8 @@ export interface Rect {
     h: number;
 }
 
-export type AttractorType =
+/** Page 1 — the ten textbook systems. */
+export type ClassicAttractorType =
     | 'lorenz'
     | 'rossler'
     | 'henon'
@@ -35,6 +36,24 @@ export type AttractorType =
     | 'halvorsen'
     | 'dadras'
     | 'aizawa';
+
+/** Page 2 — ten systems invented for The Record (see attractors/originalCalculations.ts). */
+export type OriginalAttractorType =
+    | 'sigil'
+    | 'wick'
+    | 'cinder'
+    | 'gyre'
+    | 'moth'
+    | 'tidepool'
+    | 'ossuary'
+    | 'ripple'
+    | 'anvil'
+    | 'reed';
+
+export type AttractorType = ClassicAttractorType | OriginalAttractorType;
+
+/** Which set of ten is on screen. */
+export type AttractorPage = 'classic' | 'original';
 
 export interface AttractorParams {
     dt: number;
@@ -50,6 +69,8 @@ export interface Attractor {
     offset: { x: number; y: number };
     rect?: Rect;
     rotation?: Rotation3D;
+    /** Attractor-space point that should sit at the tile centre (subtracted before projection). */
+    center?: Rotation3D;
 }
 
 export interface Particle {

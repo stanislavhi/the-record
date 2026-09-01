@@ -4,7 +4,7 @@
 >
 > See [Interactive Attractor Controls.md](../Interactive%20Attractor%20Controls.md) for the complete conversation log.
 
-**The Record** is an interactive visualization of 10 chaotic attractors — mathematical systems that trace infinite, never-repeating paths through phase-space. Every line you see is a deterministic equation being computed in real time.
+**The Record** is an interactive visualization of chaotic attractors — mathematical systems that trace infinite, never-repeating paths through phase-space. Every line you see is a deterministic equation being computed in real time. There are two pages of ten: **Page 1** holds the textbook classics, **Page 2** holds ten systems invented for this project.
 
 ---
 
@@ -35,6 +35,25 @@ Ten chaos engines run simultaneously in a responsive grid, each isolated in its 
 | **Aizawa** | 🟠 Amber | Continuous | Toroidal — doughnut-shaped orbit |
 
 Each attractor runs **10 parallel points** by default with a coherent HSL color gradient (±2% hue shift per point), creating dense layered trails that reveal the attractor's full structure over time.
+
+### Page 2 — the originals
+
+Press `2` (or the toolbar's **Page 2 ✦** button) to swap the whole grid for ten systems designed for The Record. They are not transcribed from a reference: each one started as a twist on a known chaos mechanism, and its coefficients were found by a numerical sweep that only kept regimes that stay bounded and chaotic under the app's own integrator. Press `1` to come back. The choice is remembered between visits.
+
+| Attractor | Color | Type | What to look for |
+|-----------|-------|------|-----------------|
+| **Sigil** | 💜 Violet | Continuous | Lorenz with a cos(wz) gain — a tight, fast-flickering knot instead of two calm wings |
+| **Wick** | 🟡 Candle | Continuous | Lorenz whose z pump only pushes up — a single tall lobe fed by both wings |
+| **Cinder** | 🔴 Ember | Continuous | Chua's double scroll with the corners smoothed by tanh — rounder, softer |
+| **Gyre** | 🩵 Teal | Continuous | Three scrolls; a cos(x) ripple nudges orbits between them at odd intervals |
+| **Moth** | 🩷 Rose | Continuous | Slow drift near the centre, sudden wide loops when the thermostat bites |
+| **Tidepool** | 🟢 Sea green | Continuous | A spiral that swells, stalls and drains as z dials the radius |
+| **Ossuary** | 💜 Lilac | Continuous | Nosé–Hoover shells rattled by a sin(wx) forcing — stacked bone-like rings |
+| **Ripple** | 🔵 Ice | Discrete | Sine/cosine map drawn as dust, like Hénon — z is a delayed echo of x |
+| **Anvil** | ⚪ Steel | Continuous | Jerk system: sinusoidal kick vs cubic brake — heavy, blocky loops |
+| **Reed** | 🟢 Chartreuse | Continuous | Jerk with a square-root restoring force — thin swaying strands |
+
+Every Page 2 tooltip and tour card carries an **original** badge, and the Lyapunov exponent shown is a measured value (see `npm run vet:attractors`), not a quoted one.
 
 ---
 
@@ -99,6 +118,7 @@ The fixed toolbar at the bottom center of the screen exposes whole-app actions:
 | ⏸ / ▶ | **Pause / Resume** the entire simulation |
 | ↺ | **Reset All** — flush every tile's trails |
 | 🎲 All | **Randomize All** — randomize every attractor at once |
+| Page 2 ✦ / Page 1 | **Page toggle** — swap between the ten classics and the ten originals (clears trails, resets tile controls; persisted to `localStorage`) |
 | Palette ▾ | **Palette preset** — apply Original, Neon, Pastel, Mono, Warm, or Cold across all 10 attractors |
 | Perf ▾ | **Performance mode** — Low / Med / High, adjusting render sub-steps and glow (persisted to `localStorage`) |
 | PNG | **Snapshot** — save the current canvas as a timestamped PNG |
@@ -126,6 +146,7 @@ Clicks inside the toolbar are excluded from the canvas "merge" handler, so press
 | `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
 | `M` | Mute / unmute the generative audio synth |
+| `1` / `2` | Page 1 (classics) / Page 2 (originals) — Ctrl/Cmd/Alt combinations pass through to the browser |
 | `+` / `-` | Add / remove a point on the last-focused tile |
 | `← ↑ → ↓` | Rotate the last-focused tile's joystick (tour nav takes priority while the tour is open) |
 
@@ -133,7 +154,7 @@ Shortcuts are ignored while typing inside inputs, textareas, or contenteditable 
 
 ## Narrative Tour
 
-The tour is a guided walkthrough of all 10 attractors. Open it from the toolbar or with `N`. Each card shows the attractor's name, discoverer + year, equations, Lyapunov exponent, and a short blurb explaining what makes it interesting. Use `←` / `→` to step through and `Esc` to close.
+The tour is a guided walkthrough of the ten attractors on the current page — switch pages first to tour the originals. Open it from the toolbar or with `N`. Each card shows the attractor's name, discoverer + year, equations, Lyapunov exponent, and a short blurb explaining what makes it interesting. Use `←` / `→` to step through and `Esc` to close.
 
 While the tour is open, the nine non-current tiles dim to ~22% opacity (300 ms transition) so the spotlighted attractor stays visually dominant. Canvas trails keep rendering at full intensity — only the tile frame overlay dims.
 

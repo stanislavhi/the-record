@@ -2,7 +2,7 @@
 
 > *"If the Database (God) is the atemporal record of all computation, and our thought is the flicker (IS/IS-NOT) that writes to it, what is the color of the ink?"*
 
-An interactive visualization of chaotic attractors — mathematical systems that model deterministic chaos. Watch 10 strange attractors dance through phase-space, each tracing patterns that never repeat yet never escape their bounds.
+An interactive visualization of chaotic attractors — mathematical systems that model deterministic chaos. Watch 10 strange attractors dance through phase-space, each tracing patterns that never repeat yet never escape their bounds. Flip to **Page 2** for ten more systems invented for this project.
 
 ![The Record — Live Demo](public/demo.gif)
 
@@ -21,6 +21,7 @@ An interactive visualization of chaotic attractors — mathematical systems that
 ## ✨ Features
 
 - **10 Chaotic Attractors** — Lorenz, Rossler, Henon, Chua, Sprott, Four-Wing, Rabinovich, Halvorsen, Dadras, Aizawa
+- **Page 2 — 10 Original Attractors** — Sigil, Wick, Cinder, Gyre, Moth, Tidepool, Ossuary, Ripple, Anvil, Reed: systems designed for this project, parameter-swept for bounded chaos with `npm run vet:attractors`. Toggle with the toolbar button or `1` / `2`
 - **Real-time 3D Rendering** — Canvas-based simulation with isometric projection
 - **Interactive Per-Tile Controls** (visible on hover / focus):
   - 🕹️ **Joystick Rotation** — Drag to rotate X/Y axes (now with live needle indicator)
@@ -31,14 +32,14 @@ An interactive visualization of chaotic attractors — mathematical systems that
   - 🎲 **Randomize** — Instantly randomize color, rotation, scale, and speed
   - 🚿 **Flush** — Clear trail history for a tile
   - ℹ️ **Info Tooltip** — Hover the tile title for equations, Lyapunov exponent, and discoverer
-- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, Palette presets, **Perf mode (Low/Med/High)**, PNG export, **WebM recorder with elapsed counter + 60 s soft cap**, Tour, Theme toggle, Stats overlay, Help modal
+- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, **Page 1 / Page 2 toggle**, Palette presets, **Perf mode (Low/Med/High)**, PNG export, **WebM recorder with elapsed counter + 60 s soft cap**, Tour, Theme toggle, Stats overlay, Help modal
 - **Generative audio synth** — 10 oscillator voices mapped from each attractor (`x → pitch`, `y → pan`, `z → filter cutoff`), default muted, `M` to toggle, ducks on pause
 - **Narrative tour with grid spotlight** — opening the Tour dims the other nine tiles so the current attractor stays lit
 - **Narrative Tour** — Guided walkthrough of all 10 attractors (toolbar "Tour" or `N`)
 - **PNG + WebM Export** — Snapshot the canvas as PNG or record a WebM video
 - **6 Palette Presets** — Original, Neon, Pastel, Mono, Warm, Cold — applied to all 10 attractors
 - **Dark + Light themes** — CSS-variable-driven, tuned glow/alpha per theme, persisted to `localStorage`, honors `prefers-color-scheme`
-- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour, `M` mute, `+/-` point count on focused tile, arrows rotate focused joystick
+- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour, `M` mute, `1`/`2` page, `+/-` point count on focused tile, arrows rotate focused joystick
 - **Touch Support** — Pointer Events across joystick and canvas
 - **Responsive Grid** — 2 / 3 / 5 columns across mobile / tablet / desktop
 - **Accessibility** — ARIA labels, visible focus rings, keyboard-reachable controls
@@ -92,10 +93,13 @@ npm run preview
 | `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
 | `M` | Mute / unmute the generative audio synth |
+| `1` / `2` | Page 1 (classics) / Page 2 (originals) |
 | `+` / `-` | Add / remove a point on the last-focused tile |
 | `Arrows` | Rotate the last-focused tile's joystick |
 
 ## 🧮 The Attractors
+
+### Page 1 — the classics
 
 | Name | Color | Type | Description |
 |------|-------|------|-------------|
@@ -109,6 +113,28 @@ npm run preview
 | **Halvorsen** | 🩷 Magenta | Continuous | Cyclically symmetric |
 | **Dadras** | 💜 Violet | Continuous | 5-parameter system |
 | **Aizawa** | 🟠 Amber | Continuous | Toroidal shape |
+
+### Page 2 — the originals (Wave 4)
+
+Ten systems invented for The Record. Each is a deliberate twist on a known chaos mechanism; coefficients were chosen by numerical sweep so every one stays bounded and chaotic under the app's own Euler step. Lyapunov exponents in the tooltips are measured, not quoted.
+
+| Name | Color | Type | Mechanism |
+|------|-------|------|-----------|
+| **Sigil** | 💜 Violet | Continuous | Lorenz with a cos(wz) gain |
+| **Wick** | 🟡 Candle | Continuous | Lorenz with a one-sided \|xy\| pump on z |
+| **Cinder** | 🔴 Ember | Continuous | Chua with a tanh diode |
+| **Gyre** | 🩵 Teal | Continuous | Dadras scrolls + cos(x) ripple |
+| **Moth** | 🩷 Rose | Continuous | Jerk-like flow with a y·tanh(y) thermostat |
+| **Tidepool** | 🟢 Sea green | Continuous | Rotation whose radius is dialled by z |
+| **Ossuary** | 💜 Lilac | Continuous | Nosé–Hoover + sin(wx) forcing |
+| **Ripple** | 🔵 Ice | Discrete | 3D sine/cosine map with a delayed echo |
+| **Anvil** | ⚪ Steel | Continuous | Jerk: sin(x) kick vs x³ brake |
+| **Reed** | 🟢 Chartreuse | Continuous | Jerk with a √\|x\| restoring force |
+
+```bash
+npm run vet:attractors            # re-measure Page 2 (exit 1 if any system is unstable / non-chaotic)
+npm run vet:attractors -- all     # both pages
+```
 
 ## 🏗️ Architecture
 
@@ -124,16 +150,18 @@ src/
 │   ├── HelpModal.tsx          # Keyboard shortcut legend
 │   ├── Toolbar.tsx            # Global pause/reset/randomize/palette/export/tour/theme
 │   ├── InfoTooltip.tsx        # Hover card with equations + metadata
-│   ├── TourModal.tsx          # Narrative walkthrough of all 10 attractors
+│   ├── TourModal.tsx          # Narrative walkthrough of the active page's attractors
 │   ├── IntroOverlay.tsx       # "CLICK TO MERGE" with loading dots
 │   ├── PausedOverlay.tsx      # Dimmed pause state
 │   ├── AudioPanel.tsx         # Volume + mute for the generative synth
 │   ├── ErrorBoundary.tsx      # Readable fallback if canvas fails
-│   ├── constants.ts           # Attractor configs + LAYOUT/CANVAS_STYLE/Z_INDEX/KEYBINDINGS/PERF_PRESETS
+│   ├── constants.ts           # Page 1 + Page 2 attractor configs + LAYOUT/CANVAS_STYLE/Z_INDEX/KEYBINDINGS/PERF_PRESETS
 │   ├── types.ts               # Shared TypeScript interfaces
 │   ├── attractors/
-│   │   ├── attractorCalculations.ts  # Physics per type
-│   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer metadata
+│   │   ├── attractorCalculations.ts  # Classic physics + merged calculator map + isDiscrete()
+│   │   ├── originalCalculations.ts   # Page 2 — ten original systems
+│   │   ├── calculatorTypes.ts        # Shared Delta / AttractorCalculator types
+│   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer metadata (all 20)
 │   └── utils/
 │       ├── colorUtils.ts      # RGB ↔ HSL conversions
 │       └── projection.ts      # 3D → 2D isometric projection
@@ -157,6 +185,8 @@ src/
 │   └── exportCanvas.ts        # PNG snapshot + WebM recorder
 ├── App.tsx                    # ErrorBoundary + TheVoid
 └── main.tsx
+scripts/
+└── vet-attractors.mjs         # Lyapunov / bounds / divergence check for every attractor (esbuild-bundled TS)
 ```
 
 ## 🛠️ Tech Stack

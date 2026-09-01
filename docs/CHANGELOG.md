@@ -8,6 +8,34 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
+## [1.5.0] — 2026-09-01 — Wave 4: Page 2 — ten original attractors
+
+Ships on `claude/wave-4-page-2-original-attractors` (branched off Wave 3). Adds a second roster of ten chaotic systems invented for this project, and a Page 1 / Page 2 toggle that swaps the whole grid between the classics and the originals.
+
+### Added
+- **Ten original attractors** — `src/components/attractors/originalCalculations.ts`: **Sigil** (Lorenz with a cos(wz) gain), **Wick** (Lorenz with an |xy| pump that only pushes z upward), **Cinder** (Chua with the diode smoothed into tanh), **Gyre** (Dadras scrolls with a cos(x) ripple on z), **Moth** (jerk-like flow with a y·tanh(y) thermostat), **Tidepool** (planar rotation whose radius is dialled by z), **Ossuary** (Nosé–Hoover thermostat with sin(wx) forcing), **Ripple** (discrete 3D sine/cosine map, drawn as dust like Hénon), **Anvil** (jerk: sinusoidal kick vs cubic brake), **Reed** (jerk with a square-root restoring force). Each started as a deliberate twist on a known chaos mechanism; parameters were chosen by numerical sweep, keeping only regimes that are bounded, non-diverging and chaotic under the app's own forward-Euler step.
+- **Page toggle** — Toolbar `Page 2 ✦` / `Page 1` button (active state on Page 2), `1` / `2` keys (Ctrl/Cmd/Alt pass through), persisted in `localStorage('attractorPage')`. Switching rebuilds the roster from `createInitialAttractors(page)`, clears trails and particles, re-lays out the tiles, and resets speeds, palette select, tour index and last-focused tile. The Stats HUD phase reads `PAGE 2: ORIGINALS` while Page 2 is active.
+- **Vetting script** — `scripts/vet-attractors.mjs` (`npm run vet:attractors [classic|original|all]`) bundles the real TypeScript through esbuild and measures, per attractor, the largest Lyapunov exponent (Benettin renormalisation), orbit centre, spread, extent and divergence resets — integrating exactly the way `TheVoid` does. Exits non-zero if any Page 2 system is unstable or non-chaotic.
+- **`center` on `Attractor`** — optional attractor-space point subtracted before projection, so systems whose orbit lives away from the origin (Wick sits at z ≈ 39) are centred in their tile.
+- **`DISCRETE_TYPES` / `isDiscrete()`** — replaces the hard-coded `'henon'` checks in the render loop and the worker, so any map-type system gets the in-place iteration + dot-cloud drawing path.
+- **Original badge** — `InfoTooltip` shows an accent-coloured `original` chip next to the credit line; `TourModal` adds a "Page 2 original — invented for this project, not from the literature" line. Credit line for all ten: `Claude · for The Record · 2026`.
+
+### Changed
+- **`types.ts`** — `AttractorType` is now `ClassicAttractorType | OriginalAttractorType`; new `AttractorPage = 'classic' | 'original'`; `Attractor.center?: Rotation3D`.
+- **`constants.ts`** — `createClassicAttractors()`, `createOriginalAttractors()`, `createInitialAttractors(page)`, `readSavedPage()`, `PAGE_STORAGE_KEY`, `DEFAULT_PAGE`; `KEYBINDINGS.page1/page2`.
+- **`attractorCalculations.ts`** — merges classic + original calculator maps; shared `Delta` / `AttractorCalculator` types moved to `calculatorTypes.ts`.
+- **`TheVoid.tsx`** — `page` / `pageTypes` state, `pageRef`, `handlePageChange`; tour types follow the active page; `triggerMerge` sets the phase label per page; render loop reads `isDiscrete()` once per attractor.
+- **`Toolbar.tsx`** — `page` + `onPageChange` props; **`HelpModal.tsx`** — `1 / 2` row.
+- **`package.json`** — `vet:attractors` script.
+
+### Notes
+- Page 2 Lyapunov values shown in tooltips are **measured** (largest exponent, 400k Euler steps at the default dt), not quoted from a reference.
+- **Side finding** from the vetting script: at the app's Euler step, Page 1's Rössler (dt 0.02) and Rabinovich–Fabrikant (dt 0.01) measure a largest exponent ≈ 0 — under this integrator they settle onto periodic orbits. Untouched in this wave (classic rows are informational in the script); a dt/integrator pass is a candidate for a later wave.
+- "Original" means designed here from the mechanism up rather than transcribed from a reference. No literature search was done to certify that none of them coincides with a published system.
+- The Web Worker remains gated off. It is seeded with the mount-time page and does not re-init on a page switch — deferred together with the rest of the worker wiring.
+
+---
+
 ## [1.4.0] — 2026-04-18 — Wave 3: Pre-W3 polish + audio + perf mode + worker scaffold
 
 Ships on `claude/wave-3-polish-and-heavy-hitters` (branched off Wave 2). Closes the three pre-Wave-3 audit gaps, then lands the heavy hitters: generative audio, performance-mode toggle, and the Web Worker physics scaffold.

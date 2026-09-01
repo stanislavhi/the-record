@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { PerfMode, Theme } from './types';
+import type { AttractorPage, PerfMode, Theme } from './types';
 import { PALETTE_LABELS, type PaletteName } from '../utils/palettes';
 
 const PERF_LABELS: Record<PerfMode, string> = {
@@ -16,6 +16,8 @@ interface ToolbarProps {
     perfMode: PerfMode;
     recording: boolean;
     recordElapsedLabel: string | null;
+    page: AttractorPage;
+    onPageChange: (page: AttractorPage) => void;
     onTogglePause: () => void;
     onResetAll: () => void;
     onToggleTheme: () => void;
@@ -63,6 +65,8 @@ const Toolbar = memo((props: ToolbarProps) => {
         perfMode,
         recording,
         recordElapsedLabel,
+        page,
+        onPageChange,
         onTogglePause,
         onResetAll,
         onToggleTheme,
@@ -97,6 +101,16 @@ const Toolbar = memo((props: ToolbarProps) => {
                     label="🎲 All"
                     title="Randomize every attractor"
                     onClick={onRandomizeAll}
+                />
+                <ToolbarButton
+                    label={page === 'original' ? 'Page 1' : 'Page 2 ✦'}
+                    title={
+                        page === 'original'
+                            ? 'Back to the ten classic attractors (1)'
+                            : 'Page 2 — ten original attractors invented for The Record (2)'
+                    }
+                    onClick={() => onPageChange(page === 'original' ? 'classic' : 'original')}
+                    active={page === 'original'}
                 />
                 <label
                     className="flex items-center gap-1 px-2 py-1 text-label uppercase tracking-widest font-mono rounded border bg-black/30 border-border"

@@ -31,6 +31,14 @@ const InfoTooltip = memo(({ type, accentColor, id }: InfoTooltipProps) => {
             </div>
             <div className="mt-0.5 text-[10px] opacity-70">
                 {info.discoverer} · {info.year}
+                {info.original && (
+                    <span
+                        className="ml-1.5 rounded-sm border px-1 py-px text-[9px] uppercase tracking-wider"
+                        style={{ borderColor: accentColor, color: accentColor }}
+                    >
+                        original
+                    </span>
+                )}
             </div>
             <div className="mt-2 flex flex-col gap-0.5 font-mono text-[10px] leading-snug opacity-90">
                 {info.equations.map((eq) => (

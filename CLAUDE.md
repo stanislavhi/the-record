@@ -13,8 +13,11 @@ Work ships in **waves**, one branch per wave, each cut from the previous wave's 
 | 1 | `claude/refactor-visual-improvements-cP2Sr` | Split TheVoid + core UX |
 | 2 | `claude/wave-2-features-and-theming` | Tooltips, palettes, randomizer, export, tour, light theme |
 | 3 | `claude/wave-3-polish-and-heavy-hitters` | Audit fixes + perf mode + audio synth + worker scaffold |
+| 4 | `claude/wave-4-page-2-original-attractors` | Page 2 — ten original attractors + page toggle + vetting script |
 
 Each wave opens its own PR against `main`. Don't merge a later wave before the earlier one.
+
+A new wave starts with `git checkout -b claude/wave-N-<slug> origin/<previous-wave-branch>` and `git branch --unset-upstream` (so the first push goes to the new name, not the previous wave's). The container resets between sessions — expect to `git fetch` and re-`npm ci` first.
 
 ## PR hygiene
 
@@ -36,20 +39,25 @@ Touch all five, in this order:
 3. `docs/WALKTHROUGH.md` — new toolbar entries, new keyboard shortcuts, new sections for user-visible features
 4. `README.md` — Features list, keyboard shortcut table, directory tree
 5. `Interactive Attractor Controls.md` — milestone row(s) + appended session log block (User Input / Planner Response turns)
+6. `docs/sessions/YYYY-MM-DD-<slug>.md` + its README row — the plan (if plan mode was used) or a design/verification note (if not). The user asked for every session to be saved here.
+7. `CHECKPOINT.md` — refresh so it reflects the branch you are leaving, not the one you inherited.
 
-The chat-log file has bitten us before ("its missing out conversation from today"). Always append the session before committing.
+The chat-log file has bitten us before ("its missing out conversation from today"). Always append the session before committing. Session headings in the chat log should not carry a model identifier — say "Claude Code on Web".
 
 ## Verification gates
 
 Before any commit:
 
 ```bash
-npm run lint          # eslint, must be 0 warnings
-npx tsc --noEmit      # typecheck, must be clean
-npm run build         # optional but run it before heavy-feature commits
+npm run lint             # eslint, must be 0 warnings
+npx tsc --noEmit         # typecheck, must be clean
+npm run build            # optional but run it before heavy-feature commits
+npm run vet:attractors   # required after touching any attractor coefficient / dt / init point
 ```
 
-The worker file should bundle as a separate Vite chunk (e.g. `attractorWorker-*.js`, ~2–3 kB). If it doesn't, the `new URL(..., import.meta.url)` pattern is wrong.
+The worker file should bundle as a separate Vite chunk (e.g. `attractorWorker-*.js`, ~2–4 kB). If it doesn't, the `new URL(..., import.meta.url)` pattern is wrong.
+
+For anything visual, serve the build (`npx vite preview --port 4173`) and screenshot with the pre-installed Chromium via the global `playwright` package (`NODE_PATH=$(npm root -g)`, `executablePath: '/opt/pw-browsers/chromium'`). Route-abort `fonts.googleapis.com` / `fonts.gstatic.com` in the script — the sandbox blocks them and the resets show up as console errors that are not the app's fault.
 
 ## Repo-specific gotchas
 
@@ -80,6 +88,17 @@ Always Ctrl/Cmd-passthrough (`if (e.ctrlKey || e.metaKey) return;`) so browser z
 
 ### Last-focused tile
 `lastFocusedIndexRef` lives in `TheVoid.tsx` and is updated from `AttractorTile.onFocusCapture` + `onPointerEnter`. Keyboard shortcuts (`+/-`, arrows, `M`) dispatch to that index. Tour nav (`←`/`→`) takes priority while the tour modal is open.
+
+### Adding an attractor (Wave 4 pattern)
+1. Add the type name to `ClassicAttractorType` or `OriginalAttractorType` in `types.ts`.
+2. Add the calculator to `attractorCalculations.ts` (classic) or `originalCalculations.ts` (original). Discrete maps mutate `pt` and return a zero delta, **and** must be added to `DISCRETE_TYPES` — never test `type === 'henon'` in the render loop.
+3. Add an `ATTRACTOR_INFO` entry (tooltip + tour) — set `original: true` for Page 2.
+4. Add the roster entry in `constants.ts` with `params`, `scale`, `rotation`, and `center` (the orbit's mean position, from the vet script) if the orbit is off-origin.
+5. Run `npm run vet:attractors` and copy the measured Lyapunov exponent into the info entry. Then screenshot both themes: pale colours (ivory, bone) vanish on the light theme.
+6. Pages are exactly ten each — the synth allocates ten voices and the grid is 5 × 2 on desktop.
+
+### Page switch
+`handlePageChange` in `TheVoid.tsx` is the only place `attractors.current` is replaced. Anything that caches per-attractor state (speeds, palette, tour index, focused tile) must be reset there. The worker is not re-inited on switch (gated off anyway).
 
 ---
 
