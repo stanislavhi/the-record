@@ -2,7 +2,7 @@
 import type { AttractorParams, AttractorType } from '../components/types';
 import {
     calculateAttractorStep,
-    isDiscrete,
+    getDrawStyle,
     isPointStable,
     resetPoint,
 } from '../components/attractors/attractorCalculations';
@@ -66,7 +66,11 @@ const runStep = () => {
 
     attractors.forEach((attr, aIdx) => {
         const pointCount = attr.pointCount;
-        const discrete = isDiscrete(attr.type);
+        // Page 3 systems need a StepContext (neighbours + per-point memory) that
+        // this flat-buffer protocol does not carry; the worker is gated off anyway.
+        const style = getDrawStyle(attr.type);
+        const discrete = style.mode === 'dots';
+        const stepInterval = discrete ? Math.max(style.stepInterval, henonStepInterval) : 1;
         const buf = new Float32Array(pointCount * subSteps * 3);
         for (let p = 0; p < pointCount; p++) {
             const base = p * 3;
@@ -78,7 +82,7 @@ const runStep = () => {
             };
             for (let s = 0; s < subSteps; s++) {
                 if (discrete) {
-                    if (s % henonStepInterval === 0) {
+                    if (s % stepInterval === 0) {
                         calculateAttractorStep(attr.type, pt, attr.params);
                     }
                 } else {

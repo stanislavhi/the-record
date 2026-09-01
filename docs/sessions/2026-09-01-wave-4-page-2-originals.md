@@ -93,8 +93,57 @@ Running the same script on Page 1 shows Rössler (dt 0.02) and Rabinovich–Fabr
 
 "Original" here means designed from the mechanism up and not copied from a reference. No literature search was run to certify that none of the ten coincides with a published system; the blurbs and the tour line say so.
 
-## Verification at ship
+## Verification at ship (Page 2)
 
 - `npm run lint` clean, `npx tsc --noEmit` clean, `npm run build` clean (worker chunk 3.98 kB).
 - `npm run vet:attractors` — 10/10 pass.
 - Playwright against `vite preview`: page toggle, `1`/`2` keys, localStorage persistence across reload, tour heading on Page 2, tooltip badge, both themes. No page errors.
+
+---
+
+# Part 2 — Page 3: the menagerie
+
+**Brief (same day):**
+
+> Hmm, 3rd page but i dont want it to be the old ones but with twists xd. Something enterely different claudi!!
+
+Read as: Page 2 was "the classics, remixed" — Page 3 must differ in *kind*, not in equation. So each tile is a different class of dynamical system, and none is a 3-D flow:
+
+| # | Tile | Class | Mechanism |
+|---|------|-------|-----------|
+| 1 | Thicket | iterated function system | chaos game on four 3-D affine maps (trunk, two spiral branches, root) |
+| 2 | Dendrite | complex dynamics | Julia set of z² + c (c = −0.4 + 0.6i) by inverse iteration z ← ±√(z − c) |
+| 3 | Colony | cellular automaton | Langton's ants on a 160 × 160 torus shared by every ant in the tile |
+| 4 | Stadium | billiard | Bunimovich stadium (r = 1, straights 2), specular reflection, unit speed |
+| 5 | Pendulum | Hamiltonian | double pendulum, RK4, no damping, ten releases 0.02 rad apart |
+| 6 | Cluster | N-body | softened gravity between the tile's points inside a harmonic bowl, kick–drift |
+| 7 | Echo | delay equation | Mackey–Glass (β 0.2, γ 0.1, n 10, τ 17), 4096-sample ring buffer, plotted as (x(t), x(t−τ), x(t−2τ)) |
+| 8 | Murmuration | agents | boids: cohesion / alignment / separation, soft box, speed cap |
+| 9 | Loom | quasi-periodic | cos t + a·cos(φt), φ = golden ratio, z = b·sin(√2 t) — the deliberately non-chaotic control |
+| 10 | Rebound | impact | ball on a plate h = A·sin(ωt), restitution e; drawn on a cylinder of drive phase (no wrap seam) |
+
+## Engine changes it needed
+
+- **`StepContext`** — calculators get `{ points, index }` so interacting systems can see neighbours. The render loop builds one per point per frame.
+- **Hidden state without touching `Point3D`** — `WeakMap`s keyed by the point object (velocities, angles, ring buffers, ant heading) or by the tile's points array (ant lattice, N-body acceleration buffer). Follows a point through add/remove; GC'd on page switch.
+- **`DrawStyle`** replaces the discrete boolean: `{ mode, stepInterval }`. Hénon / Ripple keep the 20-sub-step dust pace; Page 3 dust stamps every other sub-step (10 glowing dots per point per frame — shadowBlur is the expensive part).
+- **`FACE_CAMERA`** — object rotation that cancels the isometric camera so flat systems read as drawings; `z: π` flips "up" upright.
+- **Three-way page group** in the toolbar, `3` key, `PAGE_LABELS` carrying titles + Stats phase.
+
+## Probes (not a Lyapunov sweep — most of these have no single exponent)
+
+- **Stadium / Pendulum**: two copies released 10⁻⁶ apart. Separation: `1e-6 → 6.7e-5 → 1.6e-3 → 5.5e-2 → 9.7e-1` (stadium) and `1e-6 → 2.2e-4 → 3.7e-2 → 6.6e-1 → 1.4` (pendulum) over ~3 000 sub-steps — exponential, as expected.
+- **Rebound** bounce-height scan: A ≤ 0.35 at ω = 3.5 locks into a period-1 bounce (peak σ = 0). A = 0.15, ω = 7, e = 0.6 gives irregular peaks (mean 2.0, σ 1.3, max 5.7) — chosen. Higher drives fly to the 40-unit guard.
+- **Murmuration**: first version normalised speed to a constant; in 1-D that cancels the wall's deceleration every step and a lone bird flew to x ≈ −8.7. Fixed by capping speed and adding a gentle thrust; lone bird now stays within r ≈ 1.3, flocks of 10–30 within r ≈ 2.2.
+- **Cluster** softening scan: (G 0.5, k 0.25, ε 0.2) flung bodies to r ≈ 5.7–7.7 at N = 10–30; (G 0.3, k 0.5, ε 0.4) keeps N = 10 within r ≈ 3, N = 30 within r ≈ 4.5 — chosen, with scale 35 so excursions clip rather than fill the tile.
+- **Bounds** for scale / centre from `npm run vet:attractors -- menagerie` (informational): Thicket mean (−0.25, 1.45, 0.2), extent ~2.6; Dendrite extent 1.4; Colony ±90; Echo centred at 0.93.
+
+## Verification at ship (Page 3)
+
+- lint / tsc / build clean (worker chunk grew to ~10 kB because the menagerie code is bundled into it — it is still gated off).
+- Playwright: `3` key and toolbar group, `aria-pressed` on the active page, localStorage `menagerie`, tour heading Thicket, back to Page 1 with `1`, both themes, no page errors.
+- Headless FPS is not representative (software rendering); the dust stepInterval was halved after a low headless reading.
+
+## What Page 3 does not claim
+
+These are implementations of well-known *classes* (Langton's ant, Julia sets, boids, Mackey–Glass, the stadium, the double pendulum, the bouncing ball are all textbook). The claim is not novelty of mechanism — it is that the grid now compares ten kinds of dynamics side by side, through one pipeline, with the point-count control changing the physics for the interacting ones. Thicket's maps and the specific parameter sets are this project's.

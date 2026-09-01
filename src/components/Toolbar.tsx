@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import type { AttractorPage, PerfMode, Theme } from './types';
+import { ATTRACTOR_PAGES, type AttractorPage, type PerfMode, type Theme } from './types';
+import { PAGE_LABELS } from './constants';
 import { PALETTE_LABELS, type PaletteName } from '../utils/palettes';
 
 const PERF_LABELS: Record<PerfMode, string> = {
@@ -102,16 +103,32 @@ const Toolbar = memo((props: ToolbarProps) => {
                     title="Randomize every attractor"
                     onClick={onRandomizeAll}
                 />
-                <ToolbarButton
-                    label={page === 'original' ? 'Page 1' : 'Page 2 ✦'}
-                    title={
-                        page === 'original'
-                            ? 'Back to the ten classic attractors (1)'
-                            : 'Page 2 — ten original attractors invented for The Record (2)'
-                    }
-                    onClick={() => onPageChange(page === 'original' ? 'classic' : 'original')}
-                    active={page === 'original'}
-                />
+                <div
+                    role="group"
+                    aria-label="Attractor page"
+                    className="flex items-center gap-1 px-2 py-1 text-label uppercase tracking-widest font-mono rounded border bg-black/30 border-border"
+                    style={{ backdropFilter: 'blur(6px)' }}
+                    title="Page 1 classics · Page 2 originals · Page 3 menagerie (keys 1 / 2 / 3)"
+                >
+                    <span className="text-ink-high/70">Page</span>
+                    {ATTRACTOR_PAGES.map((p) => (
+                        <button
+                            key={p}
+                            type="button"
+                            onClick={() => onPageChange(p)}
+                            title={PAGE_LABELS[p].title}
+                            aria-label={PAGE_LABELS[p].title}
+                            aria-pressed={page === p}
+                            className={`min-w-[22px] px-1.5 rounded transition-base duration-150 focus-visible:ring-2 focus-visible:ring-ink-high/60 ${
+                                page === p
+                                    ? 'bg-ink-high/20 text-ink-high'
+                                    : 'text-ink-high/60 hover:bg-ink-high/10 hover:text-ink-high'
+                            }`}
+                        >
+                            {PAGE_LABELS[p].short}
+                        </button>
+                    ))}
+                </div>
                 <label
                     className="flex items-center gap-1 px-2 py-1 text-label uppercase tracking-widest font-mono rounded border bg-black/30 border-border"
                     style={{ backdropFilter: 'blur(6px)' }}

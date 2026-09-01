@@ -8,11 +8,19 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
-## [1.5.0] — 2026-09-01 — Wave 4: Page 2 — ten original attractors
+## [1.5.0] — 2026-09-01 — Wave 4: Pages 2 + 3 — ten originals, then a menagerie
 
-Ships on `claude/wave-4-page-2-original-attractors` (branched off Wave 3). Adds a second roster of ten chaotic systems invented for this project, and a Page 1 / Page 2 toggle that swaps the whole grid between the classics and the originals.
+Ships on `claude/wave-4-page-2-original-attractors` (branched off Wave 3). Adds two more rosters of ten and a three-way page control: **Page 2** is ten chaotic flows invented for this project; **Page 3** is ten *different classes* of dynamics — fractal, map, automaton, billiard, Hamiltonian, N-body, delay, agents, quasi-periodic, impact — pushed through the same tile pipeline.
 
-### Added
+### Added — Page 3, the menagerie
+- **Ten systems from ten classes** — `src/components/attractors/menagerieCalculations.ts`: **Thicket** (chaos game on four 3-D affine maps), **Dendrite** (Julia set of z² + c by inverse iteration, c = −0.4 + 0.6i), **Colony** (Langton's ants sharing a 160 × 160 torus), **Stadium** (Bunimovich billiard, specular reflection), **Pendulum** (double pendulum, RK4, ten near-identical releases), **Cluster** (softened N-body gravity between the tile's own points in a bowl, kick–drift), **Echo** (Mackey–Glass delay equation with a 4096-sample history, plotted as a delay embedding), **Murmuration** (boids: cohesion / alignment / separation in a soft box), **Loom** (three incommensurate frequencies — quasi-periodic, deliberately *not* chaotic), **Rebound** (ball on a vibrating plate, drawn on a cylinder of drive phase). None is a flow in the Page 1 / Page 2 sense.
+- **`StepContext`** — calculators may now receive `{ points, index }` so interacting systems (Cluster, Murmuration, Colony) can see their neighbours. Per-point memory (velocities, angles, history buffers, ant heading) lives in `WeakMap`s keyed by the point object; shared memory (the ant lattice, N-body accelerations) is keyed by the tile's points array. Nothing was added to `Point3D`.
+- **`DrawStyle`** — `getDrawStyle(type)` returns `{ mode: 'trail' | 'dots', stepInterval }`, replacing the boolean discrete flag. Hénon / Ripple keep the classic 20-sub-step dust pace; Page 3 dust stamps every other sub-step.
+- **`FACE_CAMERA`** — object rotation that cancels the isometric camera so flat systems (Dendrite, Colony, Stadium) are seen face-on; add `z: π` to flip "up" upright (Thicket, Pendulum, Rebound).
+- **Three-way page control** — Toolbar `Page 1 2 3` segmented group (aria-pressed on the active page), keys `1` / `2` / `3`, `PAGE_LABELS` in `constants.ts` carrying the button title and the Stats phase (`PAGE 3: MENAGERIE`).
+- **Info cards** — `badge` / `note` fields on `AttractorInfo` (Page 2 chip `original`, Page 3 chip `menagerie`) with a one-line provenance note on the tour card. Page 3's "Lyapunov" line is descriptive (contractive IFS, conservative, quasi-periodic, …) rather than a single number.
+
+### Added — Page 2, the originals
 - **Ten original attractors** — `src/components/attractors/originalCalculations.ts`: **Sigil** (Lorenz with a cos(wz) gain), **Wick** (Lorenz with an |xy| pump that only pushes z upward), **Cinder** (Chua with the diode smoothed into tanh), **Gyre** (Dadras scrolls with a cos(x) ripple on z), **Moth** (jerk-like flow with a y·tanh(y) thermostat), **Tidepool** (planar rotation whose radius is dialled by z), **Ossuary** (Nosé–Hoover thermostat with sin(wx) forcing), **Ripple** (discrete 3D sine/cosine map, drawn as dust like Hénon), **Anvil** (jerk: sinusoidal kick vs cubic brake), **Reed** (jerk with a square-root restoring force). Each started as a deliberate twist on a known chaos mechanism; parameters were chosen by numerical sweep, keeping only regimes that are bounded, non-diverging and chaotic under the app's own forward-Euler step.
 - **Page toggle** — Toolbar `Page 2 ✦` / `Page 1` button (active state on Page 2), `1` / `2` keys (Ctrl/Cmd/Alt pass through), persisted in `localStorage('attractorPage')`. Switching rebuilds the roster from `createInitialAttractors(page)`, clears trails and particles, re-lays out the tiles, and resets speeds, palette select, tour index and last-focused tile. The Stats HUD phase reads `PAGE 2: ORIGINALS` while Page 2 is active.
 - **Vetting script** — `scripts/vet-attractors.mjs` (`npm run vet:attractors [classic|original|all]`) bundles the real TypeScript through esbuild and measures, per attractor, the largest Lyapunov exponent (Benettin renormalisation), orbit centre, spread, extent and divergence resets — integrating exactly the way `TheVoid` does. Exits non-zero if any Page 2 system is unstable or non-chaotic.
@@ -21,15 +29,19 @@ Ships on `claude/wave-4-page-2-original-attractors` (branched off Wave 3). Adds 
 - **Original badge** — `InfoTooltip` shows an accent-coloured `original` chip next to the credit line; `TourModal` adds a "Page 2 original — invented for this project, not from the literature" line. Credit line for all ten: `Claude · for The Record · 2026`.
 
 ### Changed
-- **`types.ts`** — `AttractorType` is now `ClassicAttractorType | OriginalAttractorType`; new `AttractorPage = 'classic' | 'original'`; `Attractor.center?: Rotation3D`.
-- **`constants.ts`** — `createClassicAttractors()`, `createOriginalAttractors()`, `createInitialAttractors(page)`, `readSavedPage()`, `PAGE_STORAGE_KEY`, `DEFAULT_PAGE`; `KEYBINDINGS.page1/page2`.
-- **`attractorCalculations.ts`** — merges classic + original calculator maps; shared `Delta` / `AttractorCalculator` types moved to `calculatorTypes.ts`.
-- **`TheVoid.tsx`** — `page` / `pageTypes` state, `pageRef`, `handlePageChange`; tour types follow the active page; `triggerMerge` sets the phase label per page; render loop reads `isDiscrete()` once per attractor.
-- **`Toolbar.tsx`** — `page` + `onPageChange` props; **`HelpModal.tsx`** — `1 / 2` row.
+- **`types.ts`** — `AttractorType` is now `ClassicAttractorType | OriginalAttractorType | MenagerieAttractorType`; `AttractorPage = 'classic' | 'original' | 'menagerie'` with `ATTRACTOR_PAGES`; `Attractor.center?: Rotation3D`.
+- **`constants.ts`** — `createClassicAttractors()`, `createOriginalAttractors()`, `createMenagerieAttractors()`, `createInitialAttractors(page)`, `readSavedPage()` / `isAttractorPage()`, `PAGE_STORAGE_KEY`, `DEFAULT_PAGE`, `PAGE_LABELS`, `FACE_CAMERA`; `KEYBINDINGS.page1/page2/page3`.
+- **`attractorCalculations.ts`** — merges the three calculator maps; `calculateAttractorStep(type, pt, params, ctx?)`; `getDrawStyle()` / `isDiscrete()`; shared `Delta` / `AttractorCalculator` / `StepContext` / `DrawStyle` types live in `calculatorTypes.ts`.
+- **`TheVoid.tsx`** — `page` / `pageTypes` state, `pageRef`, `handlePageChange`; tour types follow the active page; phase labels come from `PAGE_LABELS`; render loop reads the draw style once per attractor and passes a `StepContext` per point.
+- **`Toolbar.tsx`** — `page` + `onPageChange` props, segmented page group; **`HelpModal.tsx`** — `1 / 2 / 3` row; **`InfoTooltip` / `TourModal`** — badge + note.
+- **`attractorWorker.ts`** — reads `getDrawStyle()`; Page 3 systems need a `StepContext` the flat-buffer protocol does not carry (worker is gated off).
 - **`package.json`** — `vet:attractors` script.
 
 ### Notes
 - Page 2 Lyapunov values shown in tooltips are **measured** (largest exponent, 400k Euler steps at the default dt), not quoted from a reference.
+- Page 3 is **informational** in `vet:attractors`: the script perturbs the plotted point only, so it cannot see hidden state (angles, velocities, history buffers) and its LE column is meaningless there. Sensitivity for Stadium and Pendulum was checked separately (two copies released 10⁻⁶ apart lose each other within ~3 000 sub-steps); Rebound's parameters were chosen from a bounce-height scan (A = 0.15, ω = 7, e = 0.6 gives irregular peaks; A ≤ 0.35 at ω = 3.5 locks into a period-1 bounce).
+- Murmuration caps speed rather than normalising it: a hard constant-speed rule undoes the wall's deceleration every step and lets a lone bird fly out of the box.
+- Page 3 systems mutate the point in place and return a zero delta, so `resetPoint()` on an unstable point does not reset their hidden state — each calculator guards its own state for non-finite values instead.
 - **Side finding** from the vetting script: at the app's Euler step, Page 1's Rössler (dt 0.02) and Rabinovich–Fabrikant (dt 0.01) measure a largest exponent ≈ 0 — under this integrator they settle onto periodic orbits. Untouched in this wave (classic rows are informational in the script); a dt/integrator pass is a candidate for a later wave.
 - "Original" means designed here from the mechanism up rather than transcribed from a reference. No literature search was done to certify that none of them coincides with a published system.
 - The Web Worker remains gated off. It is seeded with the mount-time page and does not re-init on a page switch — deferred together with the rest of the worker wiring.

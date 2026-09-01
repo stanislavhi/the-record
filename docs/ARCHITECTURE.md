@@ -60,8 +60,9 @@ the-record/
 │   │   ├── attractors/
 │   │   │   ├── attractorCalculations.ts  # Classic physics + merged calculator map + DISCRETE_TYPES
 │   │   │   ├── originalCalculations.ts   # Page 2 — ten systems invented for The Record (Wave 4)
-│   │   │   ├── calculatorTypes.ts        # Delta / AttractorCalculator types shared by both files
-│   │   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer for all 20 (used by InfoTooltip + Tour)
+│   │   │   ├── menagerieCalculations.ts  # Page 3 — ten different classes of dynamics, hidden state in WeakMaps (Wave 4)
+│   │   │   ├── calculatorTypes.ts        # Delta / AttractorCalculator / StepContext / DrawStyle
+│   │   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer for all 30 (used by InfoTooltip + Tour)
 │   │   └── utils/
 │   │       ├── colorUtils.ts     # RGB ↔ HSL / hex conversions
 │   │       └── projection.ts     # 3D → 2D isometric projection
@@ -147,7 +148,7 @@ const pageRef     = useRef<AttractorPage>(page);
 
 **React state (drives UI):**
 ```typescript
-const [page, setPage]                 = useState<AttractorPage>(readSavedPage);   // 'classic' | 'original'
+const [page, setPage]                 = useState<AttractorPage>(readSavedPage);   // 'classic' | 'original' | 'menagerie'
 const [pageTypes, setPageTypes]       = useState<AttractorType[]>([...]);        // feeds the Tour
 const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
 const [speeds, setSpeeds]             = useState<number[]>([...]);
@@ -177,8 +178,9 @@ Attractor configurations plus central config objects:
 | `KEYBINDINGS` | Central keycode map (incl. `page1: 'Digit1'`, `page2: 'Digit2'`) |
 | `PERF_PRESETS` | low / med / high `{ subSteps, maxPoints, shadowBlur }` (Wave 3) |
 | `POINT_LIMITS`, `SPEED_LIMITS`, `SCALE_LIMITS` | Control ranges |
-| `createClassicAttractors()` / `createOriginalAttractors()` | Page 1 / Page 2 rosters (Wave 4) |
-| `createInitialAttractors(page)`, `readSavedPage()`, `PAGE_STORAGE_KEY`, `DEFAULT_PAGE` | Page selection + `localStorage` persistence |
+| `createClassicAttractors()` / `createOriginalAttractors()` / `createMenagerieAttractors()` | Page 1 / 2 / 3 rosters (Wave 4) |
+| `createInitialAttractors(page)`, `readSavedPage()`, `PAGE_STORAGE_KEY`, `DEFAULT_PAGE`, `PAGE_LABELS` | Page selection, `localStorage` persistence, button titles + Stats phase per page |
+| `FACE_CAMERA` | Rotation that cancels the isometric camera, for flat Page 3 systems |
 
 | Rendering constant | Value | Purpose |
 |-------------------|-------|---------|
@@ -194,13 +196,33 @@ Attractor configurations plus central config objects:
 
 Stateless physics functions:
 ```typescript
-calculateAttractorStep(type, point, params) → { dx, dy, dz }
-isPointStable(point)                         → boolean
-resetPoint(point)                            → void
-isDiscrete(type)                             → boolean   // DISCRETE_TYPES = { henon, ripple }
+calculateAttractorStep(type, point, params, ctx?) → { dx, dy, dz }   // ctx = { points, index }
+isPointStable(point)                               → boolean
+resetPoint(point)                                  → void
+getDrawStyle(type)                                 → { mode: 'trail' | 'dots', stepInterval }
+isDiscrete(type)                                   → boolean          // mode === 'dots'
 ```
 
-Each of the 20 `AttractorType` values maps to either differential equations (continuous flow, integrated by forward Euler with `dt` baked into the returned delta) or a recurrence relation (discrete map — the calculator mutates the point in place and returns a zero delta). The ten classics live in `attractorCalculations.ts`; the ten Wave 4 originals live in `originalCalculations.ts` and are merged into one `calculators` record.
+Each of the 30 `AttractorType` values is one of three shapes: a differential equation (continuous flow, integrated by forward Euler with `dt` baked into the returned delta), a recurrence relation (map — the calculator mutates the point in place and returns a zero delta), or a hidden-state system (Page 3 — also in-place, with its real state in a `WeakMap` keyed by the point object or by the tile's points array). The ten classics live in `attractorCalculations.ts`, the Page 2 originals in `originalCalculations.ts`, the Page 3 menagerie in `menagerieCalculations.ts`; all three are merged into one `calculators` record.
+
+The render loop hands every call a `StepContext` (`{ points: attractor.points, index }`). Interacting systems read their neighbours through it; everything else ignores it.
+
+### `menagerieCalculations.ts` (Page 3)
+
+| Type | Class | State beyond the point |
+|------|-------|------------------------|
+| `thicket` | iterated function system | none (stochastic map choice) |
+| `dendrite` | complex dynamics, inverse iteration | none (random branch of √) |
+| `colony` | cellular automaton | ant `{i, j, heading}` per point; 160 × 160 `Uint8Array` lattice per tile |
+| `stadium` | billiard | velocity per point |
+| `pendulum` | Hamiltonian, RK4 | `{θ₁, θ₂, ω₁, ω₂}` per point |
+| `cluster` | N-body, kick–drift | velocity per point; acceleration buffer per tile (recomputed when index 0 steps) |
+| `echo` | delay differential equation | 4096-sample ring buffer per point |
+| `murmuration` | agents (boids) | velocity per point |
+| `loom` | quasi-periodic | phase `t` per point |
+| `rebound` | impact oscillator | `{height, velocity, time}` per point |
+
+Because state is keyed by object identity it follows a point through add/remove, is dropped by GC when a page switch discards the array, and never touches `Point3D`.
 
 ### `originalCalculations.ts` (Page 2)
 
@@ -315,8 +337,14 @@ type ClassicAttractorType =
 type OriginalAttractorType =
     'sigil' | 'wick' | 'cinder' | 'gyre' | 'moth' |
     'tidepool' | 'ossuary' | 'ripple' | 'anvil' | 'reed';
-type AttractorType = ClassicAttractorType | OriginalAttractorType;
-type AttractorPage = 'classic' | 'original';
+type MenagerieAttractorType =
+    'thicket' | 'dendrite' | 'colony' | 'stadium' | 'pendulum' |
+    'cluster' | 'echo' | 'murmuration' | 'loom' | 'rebound';
+type AttractorType = ClassicAttractorType | OriginalAttractorType | MenagerieAttractorType;
+type AttractorPage = 'classic' | 'original' | 'menagerie';
+
+interface StepContext { points: Point3D[]; index: number; }        // Wave 4
+interface DrawStyle   { mode: 'trail' | 'dots'; stepInterval: number; }
 
 interface OverlayItem {
     index: number;
@@ -341,5 +369,5 @@ type PerfMode  = 'low' | 'med' | 'high';
 | Wave 1 | Component split / hooks / toolbar / themes / keyboard / touch | Shipped |
 | Wave 2 | Randomizer / palettes / PNG + WebM / info tooltips / narrative tour / light theme tuning | Shipped |
 | Wave 3 | Audit fixes / generative audio synth / performance-mode preset / Web Worker scaffold | Shipped (worker gated off by `USE_WORKER`) |
-| Wave 4 | Page 2 — ten original attractors / page toggle / vetting script / `center` + `isDiscrete` generalisation | Shipped |
+| Wave 4 | Page 2 — ten original attractors; Page 3 — the menagerie (ten classes of dynamics); three-way page control; vetting script; `center`, `StepContext`, `DrawStyle` generalisation | Shipped |
 | Later | Worker draw-pipeline swap (+ re-init on page switch) / `useAttractorSimulation` extraction / integrator pass for Page 1 systems that go periodic under Euler | Pending |

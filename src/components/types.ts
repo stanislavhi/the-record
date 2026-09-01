@@ -50,10 +50,29 @@ export type OriginalAttractorType =
     | 'anvil'
     | 'reed';
 
-export type AttractorType = ClassicAttractorType | OriginalAttractorType;
+/**
+ * Page 3 — ten systems from ten different classes of dynamics (IFS, complex
+ * map, cellular automaton, billiard, Hamiltonian, N-body, delay equation,
+ * flocking, quasi-periodic, impact). See attractors/menagerieCalculations.ts.
+ */
+export type MenagerieAttractorType =
+    | 'thicket'
+    | 'dendrite'
+    | 'colony'
+    | 'stadium'
+    | 'pendulum'
+    | 'cluster'
+    | 'echo'
+    | 'murmuration'
+    | 'loom'
+    | 'rebound';
+
+export type AttractorType = ClassicAttractorType | OriginalAttractorType | MenagerieAttractorType;
 
 /** Which set of ten is on screen. */
-export type AttractorPage = 'classic' | 'original';
+export type AttractorPage = 'classic' | 'original' | 'menagerie';
+
+export const ATTRACTOR_PAGES: readonly AttractorPage[] = ['classic', 'original', 'menagerie'];
 
 export interface AttractorParams {
     dt: number;

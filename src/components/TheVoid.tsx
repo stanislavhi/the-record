@@ -8,6 +8,7 @@ import {
     GRID_SIZE,
     INK_COLOR,
     LAYOUT,
+    PAGE_LABELS,
     PAGE_STORAGE_KEY,
     PERF_PRESETS,
     POINT_LIMITS,
@@ -18,7 +19,7 @@ import {
 import type { PerfMode } from './types';
 import { hexToRgb, hslToRgb, rgbToHsl } from './utils/colorUtils';
 import { project } from './utils/projection';
-import { calculateAttractorStep, isDiscrete, isPointStable, resetPoint } from './attractors/attractorCalculations';
+import { calculateAttractorStep, getDrawStyle, isPointStable, resetPoint } from './attractors/attractorCalculations';
 import AttractorGrid from './AttractorGrid';
 import StatsHUD from './StatsHUD';
 import HelpModal from './HelpModal';
@@ -209,7 +210,7 @@ const TheVoid = () => {
         if (!isIntroRef.current) return;
         isIntroRef.current = false;
         setIntro(false);
-        setPhase(pageRef.current === 'original' ? 'PAGE 2: ORIGINALS' : 'PHASE 10: ACTIVE');
+        setPhase(PAGE_LABELS[pageRef.current].phase);
         audio.start();
         for (let i = 0; i < 150; i++) {
             const angle = Math.random() * Math.PI * 2;
@@ -282,10 +283,15 @@ const TheVoid = () => {
                     ctx.clip();
                 }
 
-                // Discrete maps (Hénon, Ripple) iterate in place and are drawn as dots.
-                const discrete = isDiscrete(attractor.type);
+                // Dot systems (Hénon, Ripple, the Page 3 dust) iterate in place every
+                // `stepInterval` sub-steps and are stamped; everything else is stroked.
+                const style = getDrawStyle(attractor.type);
+                const discrete = style.mode === 'dots';
+                const stepInterval = style.stepInterval;
+                const points = attractor.points;
 
-                attractor.points.forEach((pt) => {
+                points.forEach((pt, ptIndex) => {
+                    const ctx2 = { points, index: ptIndex };
                     if (!discrete) {
                         ctx.beginPath();
                         ctx.strokeStyle = `rgba(${pt.color.r}, ${pt.color.g}, ${pt.color.b}, ${tokens.trailAlpha})`;
@@ -300,11 +306,11 @@ const TheVoid = () => {
 
                     for (let step = 0; step < subSteps; step++) {
                         if (discrete) {
-                            if (step % CANVAS_STYLE.henonStepInterval === 0) {
-                                calculateAttractorStep(attractor.type, pt, attractor.params);
+                            if (step % stepInterval === 0) {
+                                calculateAttractorStep(attractor.type, pt, attractor.params, ctx2);
                             }
                         } else {
-                            const delta = calculateAttractorStep(attractor.type, pt, attractor.params);
+                            const delta = calculateAttractorStep(attractor.type, pt, attractor.params, ctx2);
                             if (!isPointStable(pt)) resetPoint(pt);
                             pt.x += delta.dx;
                             pt.y += delta.dy;
@@ -314,7 +320,7 @@ const TheVoid = () => {
                         const p = project(pt.x, pt.y, pt.z, attractor, centerX, centerY);
 
                         if (discrete) {
-                            if (step % CANVAS_STYLE.henonStepInterval === 0) {
+                            if (step % stepInterval === 0) {
                                 const gx = Math.floor(p.x / GRID_SIZE);
                                 const gy = Math.floor(p.y / GRID_SIZE);
                                 if (gx >= 0 && gx < cols && gy >= 0 && gy < rows) {
@@ -584,7 +590,7 @@ const TheVoid = () => {
         setPalette('original');
         setTourIndex(0);
         if (!isIntroRef.current) {
-            setPhase(next === 'original' ? 'PAGE 2: ORIGINALS' : 'PHASE 10: ACTIVE');
+            setPhase(PAGE_LABELS[next].phase);
         }
         handleResetAll();
         resizeCanvas();
@@ -681,6 +687,10 @@ const TheVoid = () => {
             Digit2: (e: KeyboardEvent) => {
                 if (e.ctrlKey || e.metaKey || e.altKey) return;
                 handlePageChange('original');
+            },
+            Digit3: (e: KeyboardEvent) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                handlePageChange('menagerie');
             },
             Minus: (e: KeyboardEvent) => {
                 if (e.ctrlKey || e.metaKey) return;

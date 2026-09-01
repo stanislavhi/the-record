@@ -4,7 +4,7 @@
 >
 > See [Interactive Attractor Controls.md](../Interactive%20Attractor%20Controls.md) for the complete conversation log.
 
-**The Record** is an interactive visualization of chaotic attractors — mathematical systems that trace infinite, never-repeating paths through phase-space. Every line you see is a deterministic equation being computed in real time. There are two pages of ten: **Page 1** holds the textbook classics, **Page 2** holds ten systems invented for this project.
+**The Record** is an interactive visualization of chaotic attractors — mathematical systems that trace infinite, never-repeating paths through phase-space. Every line you see is being computed in real time. There are three pages of ten: **Page 1** holds the textbook classics, **Page 2** holds ten chaotic flows invented for this project, and **Page 3** is a menagerie — ten different *kinds* of dynamics (a fractal, a Julia set, ants, a billiard, a double pendulum, gravity, a delay equation, a flock, a quasi-periodic weave, a bouncing ball).
 
 ---
 
@@ -54,6 +54,25 @@ Press `2` (or the toolbar's **Page 2 ✦** button) to swap the whole grid for te
 | **Reed** | 🟢 Chartreuse | Continuous | Jerk with a square-root restoring force — thin swaying strands |
 
 Every Page 2 tooltip and tour card carries an **original** badge, and the Lyapunov exponent shown is a measured value (see `npm run vet:attractors`), not a quoted one.
+
+### Page 3 — the menagerie
+
+Press `3` (or the **3** in the toolbar's Page group). Nothing on this page is a strange-attractor flow. Each tile is a different class of dynamical system, run through the same point-and-trail pipeline, so the grid becomes a comparison of *kinds* of motion rather than ten more shapes.
+
+| Tile | Kind of system | What to look for |
+|------|----------------|-----------------|
+| **Thicket** | iterated function system | A chaos game: dust converges onto a self-similar shrub no matter where the points start |
+| **Dendrite** | complex dynamics | The Julia set of z² + c, painted by running the map backwards |
+| **Colony** | cellular automaton | Langton's ants on one shared lattice — wait ~10 000 steps for a highway; add ants and they rewrite each other |
+| **Stadium** | billiard | Straight lines and hard bounces, yet the rounded caps scatter nearby balls apart |
+| **Pendulum** | Hamiltonian mechanics | Ten double pendulums released almost identically; no friction, no attractor, still disagreement in seconds |
+| **Cluster** | N-body | The tile's own points attract each other. One point is an ellipse, three is chaos — press `+` |
+| **Echo** | delay equation | Mackey–Glass: the present depends on 17 time units of history; shown as a delay embedding |
+| **Murmuration** | agents | Boids: three local rules, no leader. Press `+` to grow the flock |
+| **Loom** | quasi-periodic | The control: three irrational frequencies, never repeats, never chaotic |
+| **Rebound** | impact dynamics | A ball on a vibrating plate, wound round a cylinder of drive phase so the bounces stack into a band |
+
+Three of these (Cluster, Murmuration, Colony) are *interacting* systems — the point count slider changes the physics, not just the density. The Lyapunov line in their cards is descriptive rather than a number, because a single exponent is not the right summary for a stochastic, conservative or quasi-periodic system.
 
 ---
 
@@ -118,7 +137,7 @@ The fixed toolbar at the bottom center of the screen exposes whole-app actions:
 | ⏸ / ▶ | **Pause / Resume** the entire simulation |
 | ↺ | **Reset All** — flush every tile's trails |
 | 🎲 All | **Randomize All** — randomize every attractor at once |
-| Page 2 ✦ / Page 1 | **Page toggle** — swap between the ten classics and the ten originals (clears trails, resets tile controls; persisted to `localStorage`) |
+| Page 1 2 3 | **Page group** — classics / originals / menagerie (swapping clears trails and resets tile controls; persisted to `localStorage`) |
 | Palette ▾ | **Palette preset** — apply Original, Neon, Pastel, Mono, Warm, or Cold across all 10 attractors |
 | Perf ▾ | **Performance mode** — Low / Med / High, adjusting render sub-steps and glow (persisted to `localStorage`) |
 | PNG | **Snapshot** — save the current canvas as a timestamped PNG |
@@ -146,7 +165,7 @@ Clicks inside the toolbar are excluded from the canvas "merge" handler, so press
 | `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
 | `M` | Mute / unmute the generative audio synth |
-| `1` / `2` | Page 1 (classics) / Page 2 (originals) — Ctrl/Cmd/Alt combinations pass through to the browser |
+| `1` / `2` / `3` | Page 1 classics / Page 2 originals / Page 3 menagerie — Ctrl/Cmd/Alt combinations pass through to the browser |
 | `+` / `-` | Add / remove a point on the last-focused tile |
 | `← ↑ → ↓` | Rotate the last-focused tile's joystick (tour nav takes priority while the tour is open) |
 

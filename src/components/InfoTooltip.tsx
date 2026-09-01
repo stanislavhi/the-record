@@ -31,12 +31,12 @@ const InfoTooltip = memo(({ type, accentColor, id }: InfoTooltipProps) => {
             </div>
             <div className="mt-0.5 text-[10px] opacity-70">
                 {info.discoverer} · {info.year}
-                {info.original && (
+                {info.badge && (
                     <span
                         className="ml-1.5 rounded-sm border px-1 py-px text-[9px] uppercase tracking-wider"
                         style={{ borderColor: accentColor, color: accentColor }}
                     >
-                        original
+                        {info.badge}
                     </span>
                 )}
             </div>

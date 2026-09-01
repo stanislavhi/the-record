@@ -13,7 +13,7 @@ Work ships in **waves**, one branch per wave, each cut from the previous wave's 
 | 1 | `claude/refactor-visual-improvements-cP2Sr` | Split TheVoid + core UX |
 | 2 | `claude/wave-2-features-and-theming` | Tooltips, palettes, randomizer, export, tour, light theme |
 | 3 | `claude/wave-3-polish-and-heavy-hitters` | Audit fixes + perf mode + audio synth + worker scaffold |
-| 4 | `claude/wave-4-page-2-original-attractors` | Page 2 — ten original attractors + page toggle + vetting script |
+| 4 | `claude/wave-4-page-2-original-attractors` | Page 2 — ten original attractors; Page 3 — the menagerie; page group + vetting script |
 
 Each wave opens its own PR against `main`. Don't merge a later wave before the earlier one.
 
@@ -90,12 +90,20 @@ Always Ctrl/Cmd-passthrough (`if (e.ctrlKey || e.metaKey) return;`) so browser z
 `lastFocusedIndexRef` lives in `TheVoid.tsx` and is updated from `AttractorTile.onFocusCapture` + `onPointerEnter`. Keyboard shortcuts (`+/-`, arrows, `M`) dispatch to that index. Tour nav (`←`/`→`) takes priority while the tour modal is open.
 
 ### Adding an attractor (Wave 4 pattern)
-1. Add the type name to `ClassicAttractorType` or `OriginalAttractorType` in `types.ts`.
-2. Add the calculator to `attractorCalculations.ts` (classic) or `originalCalculations.ts` (original). Discrete maps mutate `pt` and return a zero delta, **and** must be added to `DISCRETE_TYPES` — never test `type === 'henon'` in the render loop.
-3. Add an `ATTRACTOR_INFO` entry (tooltip + tour) — set `original: true` for Page 2.
-4. Add the roster entry in `constants.ts` with `params`, `scale`, `rotation`, and `center` (the orbit's mean position, from the vet script) if the orbit is off-origin.
-5. Run `npm run vet:attractors` and copy the measured Lyapunov exponent into the info entry. Then screenshot both themes: pale colours (ivory, bone) vanish on the light theme.
+1. Add the type name to `ClassicAttractorType`, `OriginalAttractorType` or `MenagerieAttractorType` in `types.ts`.
+2. Add the calculator to the matching `*Calculations.ts`. Maps and hidden-state systems mutate `pt` and return a zero delta. Anything drawn as dust needs a `DrawStyle` entry (`mode: 'dots'`) — never test `type === 'henon'` in the render loop; use `getDrawStyle()`.
+3. Add an `ATTRACTOR_INFO` entry (tooltip + tour) — `badge: 'original'` / `'menagerie'` plus the shared `note`.
+4. Add the roster entry in `constants.ts` with `params`, `scale`, `rotation`, and `center` (the orbit's mean position, from the vet script) if the orbit is off-origin. Flat systems use `FACE_CAMERA` (add `z: Math.PI` if "up" must point up).
+5. Run `npm run vet:attractors` and copy the measured Lyapunov exponent into the info entry (Page 2 only — Page 3 is informational there, so probe sensitivity by hand). Then screenshot both themes: pale colours (ivory, bone, pure white) vanish on the light theme.
 6. Pages are exactly ten each — the synth allocates ten voices and the grid is 5 × 2 on desktop.
+
+### Hidden-state systems (Page 3 pattern)
+- Keep per-point memory in a module-level `WeakMap<object, State>` keyed by the point object, and per-tile memory keyed by `ctx.points` (the array). `stateOf(store, key, init)` lazily creates it. Never add fields to `Point3D`.
+- Calculators receive `ctx?: StepContext = { points, index }`. Treat it as optional — the worker and the vet script may call without it (`ctxOf(pt, ctx)` falls back to a single-point context).
+- Interacting systems that need all accelerations per sub-step compute them when `ctx.index === 0` and cache in the per-tile state (see Cluster).
+- `resetPoint()` cannot see hidden state: guard your own state for non-finite values and reinitialise inside the calculator.
+- Never normalise a velocity to a constant magnitude when a wall force is supposed to turn the agent around — cap it instead (Murmuration bug, fixed in Wave 4).
+- The vet script's LE column is meaningless for these (it perturbs the plotted point only). Probe sensitivity with two copies released 1e-6 apart and print the separation over time.
 
 ### Page switch
 `handlePageChange` in `TheVoid.tsx` is the only place `attractors.current` is replaced. Anything that caches per-attractor state (speeds, palette, tour index, focused tile) must be reset there. The worker is not re-inited on switch (gated off anyway).

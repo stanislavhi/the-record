@@ -2,7 +2,7 @@
 
 > *"If the Database (God) is the atemporal record of all computation, and our thought is the flicker (IS/IS-NOT) that writes to it, what is the color of the ink?"*
 
-An interactive visualization of chaotic attractors — mathematical systems that model deterministic chaos. Watch 10 strange attractors dance through phase-space, each tracing patterns that never repeat yet never escape their bounds. Flip to **Page 2** for ten more systems invented for this project.
+An interactive visualization of chaotic attractors — mathematical systems that model deterministic chaos. Watch 10 strange attractors dance through phase-space, each tracing patterns that never repeat yet never escape their bounds. Flip to **Page 2** for ten more systems invented for this project, and **Page 3** for a menagerie of ten different kinds of dynamics — a fractal, a Julia set, ants, a billiard, a double pendulum, gravity, a delay equation, a flock, a quasi-periodic weave, a bouncing ball.
 
 ![The Record — Live Demo](public/demo.gif)
 
@@ -21,7 +21,8 @@ An interactive visualization of chaotic attractors — mathematical systems that
 ## ✨ Features
 
 - **10 Chaotic Attractors** — Lorenz, Rossler, Henon, Chua, Sprott, Four-Wing, Rabinovich, Halvorsen, Dadras, Aizawa
-- **Page 2 — 10 Original Attractors** — Sigil, Wick, Cinder, Gyre, Moth, Tidepool, Ossuary, Ripple, Anvil, Reed: systems designed for this project, parameter-swept for bounded chaos with `npm run vet:attractors`. Toggle with the toolbar button or `1` / `2`
+- **Page 2 — 10 Original Attractors** — Sigil, Wick, Cinder, Gyre, Moth, Tidepool, Ossuary, Ripple, Anvil, Reed: systems designed for this project, parameter-swept for bounded chaos with `npm run vet:attractors`
+- **Page 3 — The Menagerie** — Thicket (IFS), Dendrite (Julia set), Colony (Langton's ants), Stadium (billiard), Pendulum (double pendulum), Cluster (N-body), Echo (delay equation), Murmuration (boids), Loom (quasi-periodic), Rebound (bouncing ball): ten different classes of dynamics on one grid. Pages switch with the toolbar group or `1` / `2` / `3`
 - **Real-time 3D Rendering** — Canvas-based simulation with isometric projection
 - **Interactive Per-Tile Controls** (visible on hover / focus):
   - 🕹️ **Joystick Rotation** — Drag to rotate X/Y axes (now with live needle indicator)
@@ -32,14 +33,14 @@ An interactive visualization of chaotic attractors — mathematical systems that
   - 🎲 **Randomize** — Instantly randomize color, rotation, scale, and speed
   - 🚿 **Flush** — Clear trail history for a tile
   - ℹ️ **Info Tooltip** — Hover the tile title for equations, Lyapunov exponent, and discoverer
-- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, **Page 1 / Page 2 toggle**, Palette presets, **Perf mode (Low/Med/High)**, PNG export, **WebM recorder with elapsed counter + 60 s soft cap**, Tour, Theme toggle, Stats overlay, Help modal
+- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, **Page 1 / 2 / 3 group**, Palette presets, **Perf mode (Low/Med/High)**, PNG export, **WebM recorder with elapsed counter + 60 s soft cap**, Tour, Theme toggle, Stats overlay, Help modal
 - **Generative audio synth** — 10 oscillator voices mapped from each attractor (`x → pitch`, `y → pan`, `z → filter cutoff`), default muted, `M` to toggle, ducks on pause
 - **Narrative tour with grid spotlight** — opening the Tour dims the other nine tiles so the current attractor stays lit
 - **Narrative Tour** — Guided walkthrough of all 10 attractors (toolbar "Tour" or `N`)
 - **PNG + WebM Export** — Snapshot the canvas as PNG or record a WebM video
 - **6 Palette Presets** — Original, Neon, Pastel, Mono, Warm, Cold — applied to all 10 attractors
 - **Dark + Light themes** — CSS-variable-driven, tuned glow/alpha per theme, persisted to `localStorage`, honors `prefers-color-scheme`
-- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour, `M` mute, `1`/`2` page, `+/-` point count on focused tile, arrows rotate focused joystick
+- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour, `M` mute, `1`/`2`/`3` page, `+/-` point count on focused tile, arrows rotate focused joystick
 - **Touch Support** — Pointer Events across joystick and canvas
 - **Responsive Grid** — 2 / 3 / 5 columns across mobile / tablet / desktop
 - **Accessibility** — ARIA labels, visible focus rings, keyboard-reachable controls
@@ -93,7 +94,7 @@ npm run preview
 | `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
 | `M` | Mute / unmute the generative audio synth |
-| `1` / `2` | Page 1 (classics) / Page 2 (originals) |
+| `1` / `2` / `3` | Page 1 classics / Page 2 originals / Page 3 menagerie |
 | `+` / `-` | Add / remove a point on the last-focused tile |
 | `Arrows` | Rotate the last-focused tile's joystick |
 
@@ -131,9 +132,26 @@ Ten systems invented for The Record. Each is a deliberate twist on a known chaos
 | **Anvil** | ⚪ Steel | Continuous | Jerk: sin(x) kick vs x³ brake |
 | **Reed** | 🟢 Chartreuse | Continuous | Jerk with a √\|x\| restoring force |
 
+### Page 3 — the menagerie (Wave 4)
+
+Not attractors — ten different classes of dynamics, each run through the same tile pipeline. Three of them (Cluster, Murmuration, Colony) are interacting systems, so the point-count buttons change the physics.
+
+| Name | Color | Class | What it is |
+|------|-------|-------|------------|
+| **Thicket** | 🟢 Leaf | IFS | Chaos game on four 3-D affine maps |
+| **Dendrite** | 🩷 Magenta | Complex map | Julia set of z² + c by inverse iteration |
+| **Colony** | 🟡 Yellow | Cellular automaton | Langton's ants on a shared torus |
+| **Stadium** | 🔵 Pale blue | Billiard | Bunimovich stadium, hard reflections |
+| **Pendulum** | 🟠 Orange | Hamiltonian | Double pendulum, RK4, no damping |
+| **Cluster** | 🔵 Blue | N-body | The tile's points attract each other |
+| **Echo** | 🩵 Teal | Delay equation | Mackey–Glass, delay-embedded |
+| **Murmuration** | 💜 Lavender | Agents | Boids in a soft box |
+| **Loom** | 🟡 Sand | Quasi-periodic | Three irrational frequencies — the non-chaotic control |
+| **Rebound** | 🔴 Red | Impact | Ball on a vibrating plate |
+
 ```bash
 npm run vet:attractors            # re-measure Page 2 (exit 1 if any system is unstable / non-chaotic)
-npm run vet:attractors -- all     # both pages
+npm run vet:attractors -- all     # all three pages (Page 1 and Page 3 are informational)
 ```
 
 ## 🏗️ Architecture
@@ -160,8 +178,9 @@ src/
 │   ├── attractors/
 │   │   ├── attractorCalculations.ts  # Classic physics + merged calculator map + isDiscrete()
 │   │   ├── originalCalculations.ts   # Page 2 — ten original systems
-│   │   ├── calculatorTypes.ts        # Shared Delta / AttractorCalculator types
-│   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer metadata (all 20)
+│   │   ├── menagerieCalculations.ts  # Page 3 — ten classes of dynamics (hidden state in WeakMaps)
+│   │   ├── calculatorTypes.ts        # Delta / AttractorCalculator / StepContext / DrawStyle
+│   │   └── attractorInfo.ts          # Equations, Lyapunov, discoverer metadata (all 30)
 │   └── utils/
 │       ├── colorUtils.ts      # RGB ↔ HSL conversions
 │       └── projection.ts      # 3D → 2D isometric projection

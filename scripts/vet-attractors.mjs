@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const which = process.argv[2] ?? 'original';
-const pages = which === 'all' ? ['classic', 'original'] : [which];
+const pages = which === 'all' ? ['classic', 'original', 'menagerie'] : [which];
 
 const STEPS = Number(process.env.VET_STEPS ?? 400000);
 const TRANSIENT = Math.floor(STEPS / 10);
@@ -53,8 +53,12 @@ function vet(attractor) {
     const q = { ...p, x: p.x + eps, y: p.y + eps, z: p.z + eps };
     const d0 = Math.sqrt(3) * eps;
 
+    // Each trajectory gets its own single-point context so hidden state and
+    // neighbour lookups (Page 3) stay separate between the two copies.
+    const ctxP = { points: [p], index: 0 };
+    const ctxQ = { points: [q], index: 0 };
     const step = (pt) => {
-        const d = lib.calculateAttractorStep(type, pt, params);
+        const d = lib.calculateAttractorStep(type, pt, params, pt === p ? ctxP : ctxQ);
         if (!discrete) { pt.x += d.dx; pt.y += d.dy; pt.z += d.dz; }
     };
 
@@ -98,6 +102,9 @@ for (const page of pages) {
     console.log(`\n== page: ${page}  (steps=${STEPS})`);
     if (page === 'classic') {
         console.log('(informational — textbook Lyapunov values assume exact integration; this measures the app\'s Euler step)');
+    }
+    if (page === 'menagerie') {
+        console.log('(informational — hidden-state, stochastic, conservative and interacting systems: the LE column only tracks the plotted point, so read bounds/centre/extent and treat LE as a rough hint)');
     }
     console.log('type        LE      resets  mean[x y z]           sd[x y z]             extent[x y z]         verdict');
     for (const a of lib.createInitialAttractors(page)) {

@@ -16,7 +16,7 @@ const SHORTCUTS: Array<[string, string]> = [
     ['V', 'Start / stop WebM recording'],
     ['M', 'Mute / unmute audio'],
     ['N', 'Narrative tour'],
-    ['1 / 2', 'Page 1 (classics) / Page 2 (originals)'],
+    ['1 / 2 / 3', 'Page 1 classics / 2 originals / 3 menagerie'],
     ['+ / −', 'Add / remove point on last-focused tile'],
     ['Arrows', 'Rotate last-focused joystick'],
 ];

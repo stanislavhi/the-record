@@ -67,7 +67,9 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **✦ Wave 4 — Ten original attractors** | `originalCalculations.ts` — Sigil, Wick, Cinder, Gyre, Moth, Tidepool, Ossuary, Ripple (map), Anvil, Reed. Each a twist on a known chaos mechanism; coefficients found by parameter sweep (bounded, no resets, positive Lyapunov under the app's Euler step) |
 | **📖 Wave 4 — Page 1 / Page 2 toggle** | Toolbar `Page 2 ✦` button + `1`/`2` keys; `handlePageChange` rebuilds the roster, clears trails, re-lays out tiles, resets speeds/palette/tour/focus; persisted to `localStorage('attractorPage')`; Stats phase `PAGE 2: ORIGINALS` |
 | **🔬 Wave 4 — Vetting script** | `scripts/vet-attractors.mjs` (`npm run vet:attractors`) bundles the real TS via esbuild, measures largest Lyapunov exponent / bounds / centre / resets per attractor; tooltips on Page 2 show measured values |
-| **🧭 Wave 4 — Engine generalisation** | `AttractorType = Classic \| Original`, `Attractor.center` subtracted before projection, `DISCRETE_TYPES`/`isDiscrete()` replaces hard-coded `'henon'` checks in render loop + worker; `original` badge in tooltip + tour |
+| **🧭 Wave 4 — Engine generalisation** | `AttractorType = Classic \| Original \| Menagerie`, `Attractor.center` subtracted before projection, `getDrawStyle()` / `isDiscrete()` replaces hard-coded `'henon'` checks in render loop + worker; `badge` + `note` in tooltip + tour |
+| **🦎 Wave 4 — Page 3: the menagerie** | `menagerieCalculations.ts` — Thicket (IFS), Dendrite (Julia set, inverse iteration), Colony (Langton's ants), Stadium (billiard), Pendulum (double pendulum, RK4), Cluster (N-body), Echo (Mackey–Glass delay), Murmuration (boids), Loom (quasi-periodic), Rebound (bouncing ball). Ten classes of dynamics, not ten more flows |
+| **🧠 Wave 4 — StepContext + hidden state** | Calculators get `{ points, index }`; per-point / per-tile memory in `WeakMap`s keyed by object identity; `DrawStyle { mode, stepInterval }`; `FACE_CAMERA` rotation for flat systems; three-way `Page 1 2 3` toolbar group + `3` key |
 
 ---
 
@@ -1711,3 +1713,32 @@ Rejected along the way: two Lorenz variants that were chaotic but looked like Lo
 **Side finding (not fixed).** The same script on Page 1 shows Rössler (dt 0.02) and Rabinovich–Fabrikant (dt 0.01) with largest exponent ≈ 0 under the app's Euler step — they go periodic. Left for a later wave; noted in the CHANGELOG.
 
 **Docs.** CHANGELOG `[1.5.0]`, ARCHITECTURE (tree, calculators table, projection, types, state model, roadmap), WALKTHROUGH (Page 2 table + toolbar/shortcut rows), README (features, shortcuts, Page 2 table, tree), `docs/sessions/2026-09-01-wave-4-page-2-originals.md` (design + vetting note, since no plan-mode round was used), CLAUDE.md (Wave 4 row, add-an-attractor recipe, page-switch note, vet + screenshot gates), CHECKPOINT.md refreshed, this log.
+
+### User Input
+
+> Hmm, 3rd page but i dont want it to be the old ones but with twists xd. Something enterely different claudi!!
+
+### Planner Response
+
+Agreed that Page 2 is "the classics, remixed". For Page 3 the difference had to be in *kind*: ten different classes of dynamical system on one grid, none of them a 3-D flow.
+
+| Tile | Class | What it is |
+|------|-------|------------|
+| Thicket | iterated function system | chaos game on four 3-D affine maps of this project's own design |
+| Dendrite | complex dynamics | Julia set of z² + c grown by inverse iteration |
+| Colony | cellular automaton | Langton's ants sharing one 160 × 160 torus |
+| Stadium | billiard | Bunimovich stadium, hard specular bounces |
+| Pendulum | Hamiltonian | double pendulum, RK4, ten releases 0.02 rad apart |
+| Cluster | N-body | the tile's own points attract each other in a bowl |
+| Echo | delay equation | Mackey–Glass with a history buffer, delay-embedded |
+| Murmuration | agents | boids in a soft box |
+| Loom | quasi-periodic | three irrational frequencies — the non-chaotic control |
+| Rebound | impact | ball on a vibrating plate, drawn on a cylinder of drive phase |
+
+**Engine.** These need memory and neighbours, which the point pipeline did not have. Added `StepContext { points, index }` as an optional third argument to every calculator; per-point state (velocities, angles, ring buffers, ant heading) and per-tile state (ant lattice, N-body acceleration buffer) live in `WeakMap`s keyed by object identity so `Point3D` stays untouched and state follows points through add/remove and is GC'd on page switch. Replaced the discrete boolean with `DrawStyle { mode, stepInterval }` (`getDrawStyle()`); Hénon / Ripple keep their 20-sub-step dust pace, Page 3 dust stamps every other sub-step. Added `FACE_CAMERA`, the rotation that cancels the isometric camera so flat systems read as drawings. Toolbar page toggle became a three-way `Page 1 2 3` group; `3` key; `PAGE_LABELS` carries titles and the Stats phase (`PAGE 3: MENAGERIE`); info cards gained `badge` / `note`.
+
+**Probes.** Lyapunov sweeps do not apply to most of these, so: two copies of Stadium and Pendulum released 1e-6 apart separate exponentially within ~3 000 sub-steps; a bounce-height scan showed Rebound locks to a period-1 bounce below A ≈ 0.35 at ω 3.5, so it ships at A 0.15 / ω 7 / e 0.6 with irregular peaks; Murmuration's first version normalised speed to a constant, which in 1-D cancels the wall force every step and let a lone bird fly to x ≈ −9 — fixed by capping speed instead; Cluster's softening was raised (ε 0.4, bowl 0.5) after bodies were flung to r ≈ 7 at N = 30.
+
+**Verification.** lint / tsc / build clean; Playwright: `3` key + toolbar group, `aria-pressed`, localStorage `menagerie`, tour heading, both themes, no page errors. Screenshot-driven tweaks: Stadium's pure white vanished on the light theme (now pale blue), Cluster scale 55 → 35, dust stepInterval 1 → 2.
+
+**Docs.** CHANGELOG `[1.5.0]` retitled "Pages 2 + 3" with a Page 3 section and Notes; ARCHITECTURE (tree, calculators contract, menagerie table, types, roadmap); WALKTHROUGH (Page 3 table, page group row, `1/2/3` shortcut); README (features, shortcuts, Page 3 table, tree); session note gained a Part 2; CLAUDE.md (hidden-state pattern); CHECKPOINT.md refreshed; this log.

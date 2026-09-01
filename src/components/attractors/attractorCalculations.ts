@@ -1,8 +1,9 @@
 import type { AttractorType, AttractorParams, ClassicAttractorType, Point3D } from '../types';
-import type { AttractorCalculator, Delta } from './calculatorTypes';
+import type { AttractorCalculator, Delta, DrawStyle, StepContext } from './calculatorTypes';
 import { originalCalculators } from './originalCalculations';
+import { menagerieCalculators, MENAGERIE_DRAW_STYLES } from './menagerieCalculations';
 
-export type { AttractorCalculator, Delta } from './calculatorTypes';
+export type { AttractorCalculator, Delta, DrawStyle, StepContext } from './calculatorTypes';
 
 const lorenz: AttractorCalculator = (pt, params) => {
     const { sigma, rho, beta, dt } = params;
@@ -114,23 +115,37 @@ const classicCalculators: Record<ClassicAttractorType, AttractorCalculator> = {
 const calculators: Record<AttractorType, AttractorCalculator> = {
     ...classicCalculators,
     ...originalCalculators,
+    ...menagerieCalculators,
+};
+
+const TRAIL: DrawStyle = { mode: 'trail', stepInterval: 1 };
+/** Classic maps step once per 20 sub-steps so the dust builds at the original pace. */
+const CLASSIC_DOTS: DrawStyle = { mode: 'dots', stepInterval: 20 };
+
+const DRAW_STYLES: Partial<Record<AttractorType, DrawStyle>> = {
+    henon: CLASSIC_DOTS,
+    ripple: CLASSIC_DOTS,
+    ...MENAGERIE_DRAW_STYLES,
 };
 
 /**
- * Discrete maps iterate in place and are drawn as scattered dots rather than
- * a stroked trail. Everything else is a continuous flow integrated by Euler.
+ * How the render loop should draw a type: `dots` systems iterate in place and
+ * are stamped as glowing squares every `stepInterval` sub-steps; `trail`
+ * systems are stroked through every sub-step.
  */
-export const DISCRETE_TYPES: ReadonlySet<AttractorType> = new Set<AttractorType>(['henon', 'ripple']);
+export const getDrawStyle = (type: AttractorType): DrawStyle => DRAW_STYLES[type] ?? TRAIL;
 
-export const isDiscrete = (type: AttractorType): boolean => DISCRETE_TYPES.has(type);
+/** True for systems drawn as dots (Hénon, Ripple, and the Page 3 dust systems). */
+export const isDiscrete = (type: AttractorType): boolean => getDrawStyle(type).mode === 'dots';
 
 export const calculateAttractorStep = (
     type: AttractorType,
     pt: Point3D,
-    params: AttractorParams
+    params: AttractorParams,
+    ctx?: StepContext
 ): Delta => {
     const calculator = calculators[type];
-    if (calculator) return calculator(pt, params);
+    if (calculator) return calculator(pt, params, ctx);
     return { dx: 0, dy: 0, dz: 0 };
 };
 

@@ -11,7 +11,7 @@ Plan-mode documents preserved alongside the code they produced, so each session'
 | File | Span | Branches | Notes |
 |------|------|----------|-------|
 | [`2026-04-17-refactor-visual-improvements-master-plan.md`](./2026-04-17-refactor-visual-improvements-master-plan.md) | Waves 1 → 2 → 3 | `claude/refactor-visual-improvements-cP2Sr`, `claude/wave-2-features-and-theming`, `claude/wave-3-polish-and-heavy-hitters` | Living master plan. Parts 1–3 = Wave 1 (refactor + visual polish + UX reach). Part 4 = Wave 2 (tooltips, palettes, randomizer, export, tour). Parts 5–6 = Wave 3 (audio synth, perf mode, worker). Part 7 = theming (shipped across Waves 1+2). Pre-W3 audit section lists ship-vs-plan gaps. Final section = the approved Wave 3 execution order (Stage A + Stage B). |
-| [`2026-09-01-wave-4-page-2-originals.md`](./2026-09-01-wave-4-page-2-originals.md) | Wave 4 | `claude/wave-4-page-2-original-attractors` | Design + vetting note (no plan-mode round). How the ten original attractors were searched for and chosen, the rejected candidates, measured Lyapunov table, page-toggle design, and the Euler side-finding on two Page 1 classics. |
+| [`2026-09-01-wave-4-page-2-originals.md`](./2026-09-01-wave-4-page-2-originals.md) | Wave 4 | `claude/wave-4-page-2-original-attractors` | Design + vetting note (no plan-mode round). Part 1: how the ten Page 2 originals were searched for and chosen, rejected candidates, measured Lyapunov table, page-toggle design, Euler side-finding on two Page 1 classics. Part 2: Page 3 menagerie — ten classes of dynamics, the `StepContext` / hidden-state / `DrawStyle` engine changes, sensitivity probes, and what it does not claim. |
 
 ## Convention
 
