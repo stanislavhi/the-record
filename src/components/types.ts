@@ -1,5 +1,3 @@
-// Types for TheVoid component
-
 export interface RGB {
     r: number;
     g: number;
@@ -26,20 +24,55 @@ export interface Rect {
     h: number;
 }
 
-export type AttractorType =
+/** Page 1 — the ten textbook systems. */
+export type ClassicAttractorType =
     | 'lorenz'
     | 'rossler'
     | 'henon'
     | 'chua'
     | 'sprott'
     | 'four_wing'
-    | 'tsucs'
     | 'rabinovich'
     | 'halvorsen'
-    | 'chen'
     | 'dadras'
-    | 'aizawa'
-    | 'thomas';
+    | 'aizawa';
+
+/** Page 2 — ten systems invented for The Record (see attractors/originalCalculations.ts). */
+export type OriginalAttractorType =
+    | 'sigil'
+    | 'wick'
+    | 'cinder'
+    | 'gyre'
+    | 'moth'
+    | 'tidepool'
+    | 'ossuary'
+    | 'ripple'
+    | 'anvil'
+    | 'reed';
+
+/**
+ * Page 3 — ten systems from ten different classes of dynamics (IFS, complex
+ * map, cellular automaton, billiard, Hamiltonian, N-body, delay equation,
+ * flocking, quasi-periodic, impact). See attractors/menagerieCalculations.ts.
+ */
+export type MenagerieAttractorType =
+    | 'thicket'
+    | 'dendrite'
+    | 'colony'
+    | 'stadium'
+    | 'pendulum'
+    | 'cluster'
+    | 'echo'
+    | 'murmuration'
+    | 'loom'
+    | 'rebound';
+
+export type AttractorType = ClassicAttractorType | OriginalAttractorType | MenagerieAttractorType;
+
+/** Which set of ten is on screen. */
+export type AttractorPage = 'classic' | 'original' | 'menagerie';
+
+export const ATTRACTOR_PAGES: readonly AttractorPage[] = ['classic', 'original', 'menagerie'];
 
 export interface AttractorParams {
     dt: number;
@@ -55,6 +88,8 @@ export interface Attractor {
     offset: { x: number; y: number };
     rect?: Rect;
     rotation?: Rotation3D;
+    /** Attractor-space point that should sit at the tile centre (subtracted before projection). */
+    center?: Rotation3D;
 }
 
 export interface Particle {
@@ -68,15 +103,33 @@ export interface Particle {
 
 export interface OverlayItem {
     index: number;
-    type: string;
+    type: AttractorType;
     rect: Rect;
     rotation: Rotation3D;
     color: RGB;
     scale: number;
+    pointCount: number;
 }
 
-export interface MouseState {
-    x: number;
-    y: number;
-    active: boolean;
+export type Theme = 'dark' | 'light';
+
+export type PerfMode = 'low' | 'med' | 'high';
+
+export interface ThemeTokens {
+    void: string;
+    voidRGB: string;
+    rectStroke: string;
+    inkHigh: string;
+    inkLow: string;
+    grid: string;
+    glow: number;
+    trailAlpha: number;
+    gridIntensity: number;
+    fadeAlpha: number;
+}
+
+export interface PerfConfig {
+    subSteps: number;
+    maxPoints: number;
+    shadowBlur: number;
 }
