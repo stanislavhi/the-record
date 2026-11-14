@@ -1,91 +1,80 @@
-# CHECKPOINT — 2026-04-18
+# CHECKPOINT — 2026-11-14
 
-Session checkpoint before context reset. See `CLAUDE.md` for persistent conventions.
+Session checkpoint. See `CLAUDE.md` for persistent conventions and `docs/sessions/` for per-session notes.
+
+---
+
+## In progress (uncommitted) — 2026-11-14 follow-up on Wave 4
+
+Same branch, on top of `e7cd844`. Nothing is committed yet; the planned split is two commits: (1) the fixes and engine split (CHANGELOG 1.5.1), (2) Page 4 plus docs (1.6.0).
+- **1.5.1 fixes**:
+  - RK4 for the classics; Rabinovich–Fabrikant, Halvorsen and Ossuary retuned;
+  - NaN latch, sub-step-major stepping, Tailwind `@config`, joystick;
+  - `TheVoid.tsx` split into `src/engine/` and hooks;
+  - vet swarm gate.
+- **1.6.0 Page 4 — the forge**: `forgeCalculations.ts` (cover / twist / inversion over π-symmetric bases), ten systems, key `4`, `badge: 'forge'`, and `forge` added to the vet gate. Notes are in `docs/sessions/2026-11-14-review-fixes-and-forge.md`.
+- **Lode** (`lode/`, `claude/lode*`, `prompts/SystemPrompt.txt`) was added this session; it is also uncommitted.
+- **Open**: what to do with the user's commit `75aba4e` (on the Wave 1 branch only, not in waves 2–4). Commit `9df1d12` carries a Co-Authored-By trailer.
 
 ---
 
-## Completed this session
+## Completed this session — Wave 4
 
-### Wave 3 branch shipped (commit `d025bc6`, pushed)
-Branch: `claude/wave-3-polish-and-heavy-hitters` off Wave 2 tip.
+Branch: `claude/wave-4-page-2-original-attractors`, cut from the Wave 3 tip (`b4f2f66`). Two commits: Page 2 (`9df1d12`), then Page 3.
 
-**Stage A — audit fixes:**
-- A1: Recorder elapsed counter + 60 s soft cap (`CanvasRecorder.elapsedMs()`, `maxDurationMs()`, auto-stop timer; Toolbar shows `■ 00:12` while recording).
-- A2: Tour grid spotlight (`spotlightIndex` dims non-current tiles to opacity 0.22, 300 ms transition).
-- A3: Last-focused tile + keyboard reach (`lastFocusedIndexRef`, `Minus`/`Equal`/arrows/`M`; Ctrl/Cmd passthrough; tour nav priority).
+### Page 3 — the menagerie (second commit)
+- `src/components/attractors/menagerieCalculations.ts`: Thicket (IFS), Dendrite (Julia set), Colony (Langton's ants), Stadium (billiard), Pendulum (double pendulum RK4), Cluster (N-body), Echo (Mackey–Glass), Murmuration (boids), Loom (quasi-periodic), Rebound (bouncing ball). Ten classes of dynamics, not ten more flows.
+- Engine: `StepContext { points, index }` third calculator argument; hidden state in `WeakMap`s keyed by point / points-array; `DrawStyle { mode, stepInterval }` via `getDrawStyle()`; `FACE_CAMERA`; `PAGE_LABELS`; `ATTRACTOR_PAGES`; three-way `Page 1 2 3` toolbar group; `3` key; `badge` / `note` on info cards.
+- Probes (see `docs/sessions/…wave-4…md` Part 2): Stadium / Pendulum sensitivity, Rebound bounce-height scan, Murmuration wall bug (speed normalisation) fixed, Cluster softening scan.
 
-**Stage B — Wave 3 heavy hitters:**
-- B1: Perf mode toggle (Low/Med/High) — `PERF_PRESETS` swap + `localStorage('perfMode')` persistence.
-- B2: Generative audio synth — `src/audio/AttractorSynth.ts` (10 sine voices → filter → pan → gain → master → compressor, 0.1 Hz LFO on cutoff), `src/hooks/useAttractorSynth.ts`, `src/components/AudioPanel.tsx`. Default muted, `M` to toggle, ducks on pause, gesture-gated start.
-- B3: Web Worker scaffold — `src/workers/attractorWorker.ts` (init/step/setParams/setPointCount protocol, `Transferable` `Float32Array` trajectories), `src/hooks/useAttractorWorker.ts`. Gated by `USE_WORKER = false` in `constants.ts`.
+### Page 2 — the originals (first commit)
 
-**Stage B4 — docs + commit + push:**
-- `docs/CHANGELOG.md` — `[1.4.0]` entry.
-- `docs/ARCHITECTURE.md` — added `AudioPanel`, `audio/`, `workers/`, `useAttractorSynth`, `useAttractorWorker`.
-- `docs/WALKTHROUGH.md` — Perf row, recorder elapsed note, new keyboard shortcuts, tour spotlight paragraph, Generative Audio + Performance Mode sections.
-- `README.md` — new features, shortcuts, directory tree rows.
-- `Interactive Attractor Controls.md` — Wave 3 milestone rows + session log block appended.
+- **Ten original attractors** in `src/components/attractors/originalCalculations.ts`: Sigil, Wick, Cinder, Gyre, Moth, Tidepool, Ossuary, Ripple (discrete map), Anvil, Reed. Info entries (equations, measured Lyapunov, blurb, `original: true`) in `attractorInfo.ts`; roster with params / scale / rotation / `center` in `constants.ts` (`createOriginalAttractors`).
+- **Page toggle**: Toolbar `Page 2 ✦` / `Page 1` button, `1` / `2` keys, `localStorage('attractorPage')`, `handlePageChange` in `TheVoid.tsx`, tour follows the page, Stats phase `PAGE 2: ORIGINALS`.
+- **Engine generalisation**: `AttractorType = ClassicAttractorType | OriginalAttractorType`, `AttractorPage`, `Attractor.center` (subtracted in `projection.ts`), `DISCRETE_TYPES` / `isDiscrete()` replacing hard-coded `'henon'` checks in the render loop and worker, shared `calculatorTypes.ts`.
+- **Vetting script**: `scripts/vet-attractors.mjs` + `npm run vet:attractors [classic|original|all]`. Bundles the real TS via esbuild; 400k Euler steps; fails on unstable / non-chaotic originals.
+- **UI**: `original` badge in `InfoTooltip`, "Page 2 original" line in `TourModal`, `1 / 2` row in `HelpModal`.
+- **Docs**: CHANGELOG `[1.5.0]`, ARCHITECTURE, WALKTHROUGH, README, chat log milestone rows + session block, `docs/sessions/2026-09-01-wave-4-page-2-originals.md`, CLAUDE.md (Wave 4 row, add-an-attractor recipe, page-switch note, vet + screenshot gates), this file.
 
-### PR #3 body fixed
-PR #3 originally had Wave 1's title/body copy-pasted. Updated title to `feat: Wave 3 — pre-W3 polish + audio synth + perf mode + worker scaffold` and rewrote body to describe Stage A + Stage B deliverables.
+## Previously (earlier sessions, all on origin)
 
-### CLAUDE.md created
-Repo now has `CLAUDE.md` with persistent session conventions: branch-per-wave strategy, PR hygiene rules, scope discipline ("later means later"), docs refresh checklist, verification gates, React 19 `react-hooks/refs` indirection pattern, worker type reference directive, `+/-` Ctrl/Cmd passthrough, last-focused-tile pattern, commit message style.
-
----
+- Waves 1–3 shipped on their own branches; PRs #1, #2, #3 all titled `feat: Wave N — …` with matching bodies.
+- `docs/sessions/2026-04-17-refactor-visual-improvements-master-plan.md` archives the three-wave plan.
 
 ## Open branches / PRs
 
 | Branch | PR | State |
 |--------|----|-------|
-| `claude/refactor-visual-improvements-cP2Sr` | [#1](https://github.com/stanislavhi/the-record/pull/1) | Open, correct title/body (Wave 1) |
-| `claude/wave-2-features-and-theming` | [#2](https://github.com/stanislavhi/the-record/pull/2) | **Open, WRONG body** — still shows Wave 1 description |
-| `claude/wave-3-polish-and-heavy-hitters` | [#3](https://github.com/stanislavhi/the-record/pull/3) | Open, title + body fixed this session |
-
-## Current state — no task in progress
-
-All Wave 3 work is shipped + pushed. PR #3 body corrected. Writing this checkpoint is the only active task.
+| `claude/refactor-visual-improvements-cP2Sr` | [#1](https://github.com/stanislavhi/the-record/pull/1) | Open, Wave 1 |
+| `claude/wave-2-features-and-theming` | [#2](https://github.com/stanislavhi/the-record/pull/2) | Open, Wave 2 |
+| `claude/wave-3-polish-and-heavy-hitters` | [#3](https://github.com/stanislavhi/the-record/pull/3) | Open, Wave 3 |
+| `claude/wave-4-page-2-original-attractors` | [#4](https://github.com/stanislavhi/the-record/pull/4) | Open, Wave 4 (title/body rewritten — it was opened with Wave 1's text) |
 
 ## Open issues
 
-1. **PR #2 (Wave 2) still has the Wave 1 title + body copy-pasted.** User was asked whether to also fix this; no response yet before the checkpoint request came in. Fix is a single `update_pull_request` call once confirmed — draft Wave 2 body based on commit `1032d99` (`feat: Wave 2 — info tooltips, palettes, randomizer, export, tour, light theme`).
-2. **Web Worker not wired into draw pipeline.** `USE_WORKER` ships as `false`. `CHANGELOG.md` flags this as an intentional follow-up. Next step when revisited: in `TheVoid.tsx` render loop, when `USE_WORKER` is true, source trajectories from `useAttractorWorker.onFrame` instead of the inline `calculateAttractorStep` path.
-3. **`useAttractorSimulation` / `useAnimationFrame` extraction deferred.** Plan called for a hook-ified render loop; shipped inline. Not urgent — only worth doing when the worker draw-pipeline swap happens (both touch the hot loop).
-4. **User message "Wave 3 PR comments is wrong, it says wave 1"** — addressed for PR #3 only. PR #2 still needs the same fix.
+1. ~~Euler side-finding on Page 1.~~ Resolved in 1.5.1: classics integrate with RK4; see CHANGELOG.
+2. **Web Worker still gated off** (`USE_WORKER = false`) and not re-inited on page switch. Deferred with the draw-pipeline swap.
+3. **Novelty not certified.** The ten Page 2 originals were designed from mechanism up and vetted numerically; no literature search was run. Page 3 does not claim novelty of mechanism at all (textbook classes; the IFS maps and parameter sets are this project's). Blurbs, tour notes and the session file say so.
+4. ~~`TheVoid` extraction~~ Done in 1.5.1 (`src/engine/*`, roster/recorder/shortcut hooks). `useAnimationFrame` is still unused by the frame loop.
+5. **Page 3 + worker.** The flat-buffer worker protocol carries no `StepContext`, so Page 3 cannot run in the worker as-is. Irrelevant while `USE_WORKER = false`; part of the worker follow-up.
+6. **Page 3 perf on weak GPUs.** Three dust tiles stamp 10 glowing dots per point per frame; Cluster and Murmuration are O(N²) per sub-step. Fine at N = 10; at N = 50 on all three interacting tiles, Perf → Low is the escape hatch. Not measured on real hardware (headless is software-rendered).
 
 ## The exact next step
 
-**Ask the user whether to also fix PR #2's title/body** (which currently has Wave 1's description). If yes:
-
-```
-mcp__github__update_pull_request(
-  owner="stanislavhi",
-  repo="the-record",
-  pullNumber=2,
-  title="feat: Wave 2 — info tooltips, palettes, randomizer, export, tour, light theme",
-  body="<Wave 2 description — info tooltips, palette presets, per-tile + global randomizer, PNG + WebM export, narrative tour, light-theme tuning>"
-)
-```
-
-Draft body should cover:
-- `InfoTooltip.tsx` (hover/focus card with equations, Lyapunov, discoverer)
-- Palette dropdown (Original / Neon / Pastel / Mono / Warm / Cold)
-- Per-tile 🎲 + global 🎲 All (bounded randomizer)
-- PNG snapshot + WebM recorder (before the 60 s cap added in Wave 3)
-- `TourModal` narrative walkthrough
-- Light theme tuning (glow 3→2, trailAlpha 0.65→0.72, `voidRGB` + `rectStroke` tokens)
-- Keyboard shortcuts added in Wave 2 (R, P, V, N)
+Nothing pending. PR #4 is open for Wave 4 with the correct title and body. Watch for review comments if asked.
 
 ## Verification state at checkpoint
 
-- `npm run lint` — clean (last run: after Stage B4)
-- `npx tsc --noEmit` — clean (last run: after Stage B4)
-- `npm run build` — clean, worker chunked separately (`attractorWorker-D8LqOuhQ.js`, ~2.6 kB)
-- `git status` — uncommitted: `CLAUDE.md`, `CHECKPOINT.md` (this file). About to commit together as `checkpoint`.
+- `npm run lint` — clean
+- `npx tsc --noEmit` — clean
+- `npm run build` — clean; `attractorWorker-*.js` chunk ~10 kB (menagerie code bundled in; gated off)
+- `npm run vet:attractors` — 10/10 originals pass; menagerie informational
+- Playwright smoke against `vite preview` — pages 1/2/3 via keys + toolbar group, persistence, tour, tooltip, both themes; no page errors
 
 ## Key files to re-read on resume
 
-1. `CLAUDE.md` — session conventions
-2. `docs/CHANGELOG.md` — `[1.4.0]` entry describes what shipped
-3. `/root/.claude/plans/create-a-branch-for-sequential-bonbon.md` — full Wave 3 plan + pre-W3 audit
-4. This file for the "what's pending" picture
+1. `CLAUDE.md` — conventions (incl. the add-an-attractor recipe)
+2. `docs/sessions/2026-09-01-wave-4-page-2-originals.md` — why these ten, what was rejected, measured numbers
+3. `src/components/TheVoid.tsx` → `handlePageChange` — the only place the roster is swapped
+4. `scripts/vet-attractors.mjs` — run it before changing any Page 2 coefficient
+5. `src/components/attractors/menagerieCalculations.ts` — header comment explains the hidden-state pattern

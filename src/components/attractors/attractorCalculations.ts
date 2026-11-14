@@ -1,12 +1,10 @@
-import type { AttractorType, AttractorParams, Point3D } from '../types';
+import type { AttractorType, AttractorParams, ClassicAttractorType, Integrator, Point3D, Vec3 } from '../types';
+import type { AttractorCalculator, Delta, DrawStyle, StepContext } from './calculatorTypes';
+import { originalCalculators } from './originalCalculations';
+import { menagerieCalculators, MENAGERIE_DRAW_STYLES } from './menagerieCalculations';
+import { forgeCalculators } from './forgeCalculations';
 
-interface Delta {
-    dx: number;
-    dy: number;
-    dz: number;
-}
-
-type AttractorCalculator = (pt: Point3D, params: AttractorParams) => Delta;
+export type { AttractorCalculator, Delta, DrawStyle, StepContext } from './calculatorTypes';
 
 const lorenz: AttractorCalculator = (pt, params) => {
     const { sigma, rho, beta, dt } = params;
@@ -102,7 +100,7 @@ const aizawa: AttractorCalculator = (pt, params) => {
     };
 };
 
-const calculators: Record<AttractorType, AttractorCalculator> = {
+const classicCalculators: Record<ClassicAttractorType, AttractorCalculator> = {
     lorenz,
     rossler,
     henon,
@@ -115,23 +113,105 @@ const calculators: Record<AttractorType, AttractorCalculator> = {
     aizawa,
 };
 
+const calculators: Record<AttractorType, AttractorCalculator> = {
+    ...classicCalculators,
+    ...originalCalculators,
+    ...menagerieCalculators,
+    ...forgeCalculators,
+};
+
+const TRAIL: DrawStyle = { mode: 'trail', stepInterval: 1 };
+/** Classic maps step once per 20 sub-steps so the dust builds at the original pace. */
+const CLASSIC_DOTS: DrawStyle = { mode: 'dots', stepInterval: 20 };
+
+const DRAW_STYLES: Partial<Record<AttractorType, DrawStyle>> = {
+    henon: CLASSIC_DOTS,
+    ripple: CLASSIC_DOTS,
+    ...MENAGERIE_DRAW_STYLES,
+};
+
+/**
+ * How the render loop should draw a type: `dots` systems iterate in place and
+ * are stamped as glowing squares every `stepInterval` sub-steps; `trail`
+ * systems are stroked through every sub-step.
+ */
+export const getDrawStyle = (type: AttractorType): DrawStyle => DRAW_STYLES[type] ?? TRAIL;
+
+/** True for systems drawn as dots (Hénon, Ripple, and the Page 3 dust systems). */
+export const isDiscrete = (type: AttractorType): boolean => getDrawStyle(type).mode === 'dots';
+
 export const calculateAttractorStep = (
     type: AttractorType,
     pt: Point3D,
-    params: AttractorParams
+    params: AttractorParams,
+    ctx?: StepContext
 ): Delta => {
     const calculator = calculators[type];
-    if (calculator) return calculator(pt, params);
+    if (calculator) return calculator(pt, params, ctx);
     return { dx: 0, dy: 0, dz: 0 };
 };
 
-export const isPointStable = (pt: Point3D): boolean =>
+export const isPointStable = (pt: Vec3): boolean =>
     !isNaN(pt.x) && Math.abs(pt.x) <= 1000 &&
     !isNaN(pt.y) && Math.abs(pt.y) <= 1000 &&
     !isNaN(pt.z) && Math.abs(pt.z) <= 1000;
 
-export const resetPoint = (pt: Point3D): void => {
-    pt.x = 0.1;
-    pt.y = 0.1;
-    pt.z = 0.1;
+const DEFAULT_HOME: Vec3 = { x: 0.1, y: 0.1, z: 0.1 };
+
+/** Move a diverged point back to `home` (the attractor's basin), default (0.1, 0.1, 0.1). */
+export const resetPoint = (pt: Vec3, home: Vec3 = DEFAULT_HOME): void => {
+    pt.x = home.x;
+    pt.y = home.y;
+    pt.z = home.z;
+};
+
+/** The subset of an Attractor that stepping needs; the worker and vet script pass plain objects. */
+export interface Steppable {
+    type: AttractorType;
+    params: AttractorParams;
+    integrator?: Integrator;
+    home?: Vec3;
+}
+
+const rk4Scratch = { x: 0, y: 0, z: 0, color: { r: 0, g: 0, b: 0 } };
+
+/**
+ * Classical RK4 on top of a calculator. Calculators return f(pt)·dt, so each
+ * stage's delta is already the k_i·h term. Only valid for pure calculators
+ * (no hidden state, no in-place mutation), i.e. the classic flows.
+ */
+const rk4Delta = (calc: AttractorCalculator, pt: Point3D, params: AttractorParams): Delta => {
+    const s = rk4Scratch;
+    const k1 = calc(pt, params);
+    s.x = pt.x + k1.dx / 2; s.y = pt.y + k1.dy / 2; s.z = pt.z + k1.dz / 2;
+    const k2 = calc(s, params);
+    s.x = pt.x + k2.dx / 2; s.y = pt.y + k2.dy / 2; s.z = pt.z + k2.dz / 2;
+    const k3 = calc(s, params);
+    s.x = pt.x + k3.dx; s.y = pt.y + k3.dy; s.z = pt.z + k3.dz;
+    const k4 = calc(s, params);
+    return {
+        dx: (k1.dx + 2 * k2.dx + 2 * k3.dx + k4.dx) / 6,
+        dy: (k1.dy + 2 * k2.dy + 2 * k3.dy + k4.dy) / 6,
+        dz: (k1.dz + 2 * k2.dz + 2 * k3.dz + k4.dz) / 6,
+    };
+};
+
+/**
+ * Advance one point of a continuous system by one sub-step.
+ * The stability guard runs BEFORE the step: a diverged/NaN point is sent home
+ * and this sub-step is spent, so a NaN can never be re-applied after a reset.
+ * Returns true when the point was reset.
+ */
+export const advancePoint = (sys: Steppable, pt: Point3D, ctx?: StepContext): boolean => {
+    if (!isPointStable(pt)) {
+        resetPoint(pt, sys.home);
+        return true;
+    }
+    const calc = calculators[sys.type];
+    if (!calc) return false;
+    const d = sys.integrator === 'rk4' ? rk4Delta(calc, pt, sys.params) : calc(pt, sys.params, ctx);
+    pt.x += d.dx;
+    pt.y += d.dy;
+    pt.z += d.dz;
+    return false;
 };

@@ -73,7 +73,10 @@ const AttractorTile = memo((props: AttractorTileProps) => {
                 />
             </div>
 
-            <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-base duration-200">
+            {/* pointer-events-auto: the tile is pointer-events:none (so the canvas stays reachable)
+                and children inherit it. Without this the joystick is hit-test transparent: hovering
+                it drops the tile's :hover, the panel fades, and drags land on the canvas. */}
+            <div className="pointer-events-auto flex flex-col gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-base duration-200">
                 <Joystick
                     rotation={item.rotation}
                     accentColor={accent}
@@ -85,6 +88,7 @@ const AttractorTile = memo((props: AttractorTileProps) => {
                     pointCount={item.pointCount}
                     scale={item.scale}
                     speed={speed}
+                    speedAdjustable={item.speedAdjustable}
                     onColorChange={(hex) => onColorChange(item.index, hex)}
                     onPointsChange={(delta) => onPointsChange(item.index, delta)}
                     onScaleChange={(v) => onScaleChange(item.index, v)}

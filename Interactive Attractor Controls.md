@@ -64,6 +64,14 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **⚡ Wave 3 — Perf mode** | Toolbar `Perf` select (Low / Med / High) swaps `SUB_STEPS` and `shadowBlur` from `PERF_PRESETS`; persisted to `localStorage('perfMode')` |
 | **🎵 Wave 3 — Generative audio synth** | `AttractorSynth` — 10 sine voices, lowpass filter + stereo pan + per-voice gain → master → compressor; shared 0.1 Hz LFO on cutoff; `x→pitch`, `y→pan`, `z→cutoff`; default muted, `M` toggles, ducks on pause |
 | **🧵 Wave 3 — Web Worker scaffold** | `attractorWorker.ts` (init/step/setParams/setPointCount protocol, `Transferable` Float32Array trajectories); `useAttractorWorker` lifecycle hook; gated by `USE_WORKER` flag in `constants.ts` (default `false`) |
+| **✦ Wave 4 — Ten original attractors** | `originalCalculations.ts` — Sigil, Wick, Cinder, Gyre, Moth, Tidepool, Ossuary, Ripple (map), Anvil, Reed. Each a twist on a known chaos mechanism; coefficients found by parameter sweep (bounded, no resets, positive Lyapunov under the app's Euler step) |
+| **📖 Wave 4 — Page 1 / Page 2 toggle** | Toolbar `Page 2 ✦` button + `1`/`2` keys; `handlePageChange` rebuilds the roster, clears trails, re-lays out tiles, resets speeds/palette/tour/focus; persisted to `localStorage('attractorPage')`; Stats phase `PAGE 2: ORIGINALS` |
+| **🔬 Wave 4 — Vetting script** | `scripts/vet-attractors.mjs` (`npm run vet:attractors`) bundles the real TS via esbuild, measures largest Lyapunov exponent / bounds / centre / resets per attractor; tooltips on Page 2 show measured values |
+| **🧭 Wave 4 — Engine generalisation** | `AttractorType = Classic \| Original \| Menagerie`, `Attractor.center` subtracted before projection, `getDrawStyle()` / `isDiscrete()` replaces hard-coded `'henon'` checks in render loop + worker; `badge` + `note` in tooltip + tour |
+| **🦎 Wave 4 — Page 3: the menagerie** | `menagerieCalculations.ts` — Thicket (IFS), Dendrite (Julia set, inverse iteration), Colony (Langton's ants), Stadium (billiard), Pendulum (double pendulum, RK4), Cluster (N-body), Echo (Mackey–Glass delay), Murmuration (boids), Loom (quasi-periodic), Rebound (bouncing ball). Ten classes of dynamics, not ten more flows |
+| **🧠 Wave 4 — StepContext + hidden state** | Calculators get `{ points, index }`; per-point / per-tile memory in `WeakMap`s keyed by object identity; `DrawStyle { mode, stepInterval }`; `FACE_CAMERA` rotation for flat systems; three-way `Page 1 2 3` toolbar group + `3` key |
+| **🛠️ Wave 4 follow-up — review fixes** | RK4 for the classics; NaN latch, sub-step-major stepping, Tailwind `@config`, joystick; `TheVoid.tsx` split into `src/engine/` + hooks; vet whole-swarm gate (CHANGELOG 1.5.1) |
+| **🔥 Wave 4 follow-up — Page 4: the forge** | `forgeCalculations.ts` — cover / twist / inversion over π-symmetric bases: Trefoil, Starfish, Compass, Lantern, Crown, Conch, Lotus, Triskele, Quatrefoil, Galaxy; λ inherited from the base flow (CHANGELOG 1.6.0) |
 
 ---
 
@@ -1663,3 +1671,112 @@ Refreshed all docs:
 - **`docs/ARCHITECTURE.md`** — added `AudioPanel.tsx` to components, `useAttractorSynth`/`useAttractorWorker` to hooks, new `audio/` and `workers/` top-level directory entries; updated `constants.ts` row to mention `USE_WORKER`, `exportCanvas.ts` row to mention the 60 s soft cap + elapsed tracking, TourModal row to call out the grid spotlight.
 - **`README.md`** — Perf mode, recorder elapsed counter, audio synth, and tour spotlight added to Features; `M`, `+/-`, Arrow shortcuts added to the shortcut table; `AudioPanel.tsx`, `audio/`, `workers/`, `useAttractorSynth.ts`, `useAttractorWorker.ts` added to the directory tree.
 - **`Interactive Attractor Controls.md`** — milestone rows for each Wave 3 deliverable + this session log.
+
+---
+
+## Session — 2026-09-01 — Wave 4: Page 2 — Ten Original Attractors (Claude Code on Web)
+
+### User Input
+
+> I want a new wave, you should have fun and add 10 more attractors yourself, try something that isnt known, ill check later in the code, you could also add a button that says page 2 and its your own cretions
+
+### Planner Response
+
+Cut `claude/wave-4-page-2-original-attractors` from the Wave 3 tip (`b4f2f66`). Read the engine (`attractorCalculations.ts`, `constants.ts`, `projection.ts`, the `TheVoid` render loop, the worker) to see what "ten more" would have to fit: forward Euler with `dt` baked into each delta, a fixed isometric camera with no way to translate an orbit, and `'henon'` hard-coded as "the discrete one" in four places.
+
+**Search.** Rather than transcribe systems from a reference, wrote a numerical harness and hunted: each candidate was a twist on a known chaos mechanism (Lorenz gain function, Chua nonlinearity, jerk restoring force, Nosé–Hoover forcing, rotation with radial pumping, folded map), swept over a small parameter grid, and kept only if it had no divergence resets, a positive largest Lyapunov exponent (Benettin renormalisation) and all three coordinates moving — integrated exactly the way the app does. Three sweep rounds plus a 6 000-candidate random quadratic search (which yielded almost nothing usable) produced the roster:
+
+| # | Name | Lyapunov (measured) | Twist |
+|---|------|--------------------|-------|
+| 1 | Sigil | 1.40 | Lorenz, `(ρ − z)` → `b·cos(wz)` |
+| 2 | Wick | 1.00 | Lorenz, one-sided `\|xy\|` pump; orbit sits at z ≈ 39 |
+| 3 | Cinder | 0.73 | Chua, diode → tanh |
+| 4 | Gyre | 0.98 | Dadras + `k·cos(x)` ripple |
+| 5 | Moth | 0.20 | `y·tanh(y)` thermostat |
+| 6 | Tidepool | 0.28 | rotation whose radius is dialled by z |
+| 7 | Ossuary | 0.10 | Nosé–Hoover + `sin(wx)` forcing |
+| 8 | Ripple | 0.39 / iter | discrete sine/cosine map with a delayed echo |
+| 9 | Anvil | 0.11 | jerk: `sin(x)` kick vs `x³` brake |
+| 10 | Reed | 0.10 | jerk with `√\|x\|` restoring force |
+
+Rejected along the way: two Lorenz variants that were chaotic but looked like Lorenz, a Rössler variant that was only chaotic when the new term vanished, a Rikitake variant with the same problem, an Aizawa look-alike, the delayed Hénon (known), and a dozen families with no bounded-chaotic regime.
+
+**Code.**
+- `types.ts` — `AttractorType = ClassicAttractorType | OriginalAttractorType`, `AttractorPage`, `Attractor.center`.
+- `attractors/originalCalculations.ts` (the ten), `attractors/calculatorTypes.ts` (shared `Delta`/`AttractorCalculator`), `attractorCalculations.ts` merges both maps and exports `DISCRETE_TYPES` / `isDiscrete()`.
+- `projection.ts` subtracts `center` before rotation so Wick is centred in its tile.
+- `constants.ts` — `createClassicAttractors` / `createOriginalAttractors` / `createInitialAttractors(page)`, `readSavedPage`, `KEYBINDINGS.page1/page2`.
+- `TheVoid.tsx` — `page` / `pageTypes` state, `handlePageChange` (the one place `attractors.current` is replaced: clears trails, re-lays out, resets speeds/palette/tour/focus/phase), render loop reads `isDiscrete()` once per attractor, `Digit1`/`Digit2` shortcuts with Ctrl/Cmd/Alt passthrough.
+- `Toolbar.tsx` — `Page 2 ✦` / `Page 1` button; `HelpModal` — `1 / 2` row; `InfoTooltip` — `original` chip; `TourModal` — "Page 2 original" line; worker uses `isDiscrete()`.
+- `scripts/vet-attractors.mjs` + `npm run vet:attractors` — esbuild-bundles the real TS and prints the Lyapunov / bounds / resets table; exits 1 if any original fails.
+
+**Verification.** `npm run lint`, `npx tsc --noEmit`, `npm run build` clean (worker chunk 3.98 kB). `npm run vet:attractors` 10/10. Playwright against `vite preview`: toggle, keys, localStorage persistence across reload, tour heading on Page 2, tooltip badge, both themes. Screenshots drove three tweaks — Moth's ivory colour vanished on the light theme (now rose), Gyre scale 5.5 → 7, Wick's initial point moved onto its orbit to kill the fly-in tail.
+
+**Side finding (not fixed).** The same script on Page 1 shows Rössler (dt 0.02) and Rabinovich–Fabrikant (dt 0.01) with largest exponent ≈ 0 under the app's Euler step — they go periodic. Left for a later wave; noted in the CHANGELOG.
+
+**Docs.** CHANGELOG `[1.5.0]`, ARCHITECTURE (tree, calculators table, projection, types, state model, roadmap), WALKTHROUGH (Page 2 table + toolbar/shortcut rows), README (features, shortcuts, Page 2 table, tree), `docs/sessions/2026-09-01-wave-4-page-2-originals.md` (design + vetting note, since no plan-mode round was used), CLAUDE.md (Wave 4 row, add-an-attractor recipe, page-switch note, vet + screenshot gates), CHECKPOINT.md refreshed, this log.
+
+### User Input
+
+> Hmm, 3rd page but i dont want it to be the old ones but with twists xd. Something enterely different claudi!!
+
+### Planner Response
+
+Agreed that Page 2 is "the classics, remixed". For Page 3 the difference had to be in *kind*: ten different classes of dynamical system on one grid, none of them a 3-D flow.
+
+| Tile | Class | What it is |
+|------|-------|------------|
+| Thicket | iterated function system | chaos game on four 3-D affine maps of this project's own design |
+| Dendrite | complex dynamics | Julia set of z² + c grown by inverse iteration |
+| Colony | cellular automaton | Langton's ants sharing one 160 × 160 torus |
+| Stadium | billiard | Bunimovich stadium, hard specular bounces |
+| Pendulum | Hamiltonian | double pendulum, RK4, ten releases 0.02 rad apart |
+| Cluster | N-body | the tile's own points attract each other in a bowl |
+| Echo | delay equation | Mackey–Glass with a history buffer, delay-embedded |
+| Murmuration | agents | boids in a soft box |
+| Loom | quasi-periodic | three irrational frequencies — the non-chaotic control |
+| Rebound | impact | ball on a vibrating plate, drawn on a cylinder of drive phase |
+
+**Engine.** These need memory and neighbours, which the point pipeline did not have. Added `StepContext { points, index }` as an optional third argument to every calculator; per-point state (velocities, angles, ring buffers, ant heading) and per-tile state (ant lattice, N-body acceleration buffer) live in `WeakMap`s keyed by object identity so `Point3D` stays untouched and state follows points through add/remove and is GC'd on page switch. Replaced the discrete boolean with `DrawStyle { mode, stepInterval }` (`getDrawStyle()`); Hénon / Ripple keep their 20-sub-step dust pace, Page 3 dust stamps every other sub-step. Added `FACE_CAMERA`, the rotation that cancels the isometric camera so flat systems read as drawings. Toolbar page toggle became a three-way `Page 1 2 3` group; `3` key; `PAGE_LABELS` carries titles and the Stats phase (`PAGE 3: MENAGERIE`); info cards gained `badge` / `note`.
+
+**Probes.** Lyapunov sweeps do not apply to most of these, so: two copies of Stadium and Pendulum released 1e-6 apart separate exponentially within ~3 000 sub-steps; a bounce-height scan showed Rebound locks to a period-1 bounce below A ≈ 0.35 at ω 3.5, so it ships at A 0.15 / ω 7 / e 0.6 with irregular peaks; Murmuration's first version normalised speed to a constant, which in 1-D cancels the wall force every step and let a lone bird fly to x ≈ −9 — fixed by capping speed instead; Cluster's softening was raised (ε 0.4, bowl 0.5) after bodies were flung to r ≈ 7 at N = 30.
+
+**Verification.** lint / tsc / build clean; Playwright: `3` key + toolbar group, `aria-pressed`, localStorage `menagerie`, tour heading, both themes, no page errors. Screenshot-driven tweaks: Stadium's pure white vanished on the light theme (now pale blue), Cluster scale 55 → 35, dust stepInterval 1 → 2.
+
+**Docs.** CHANGELOG `[1.5.0]` retitled "Pages 2 + 3" with a Page 3 section and Notes; ARCHITECTURE (tree, calculators contract, menagerie table, types, roadmap); WALKTHROUGH (Page 3 table, page group row, `1/2/3` shortcut); README (features, shortcuts, Page 3 table, tree); session note gained a Part 2; CLAUDE.md (hidden-state pattern); CHECKPOINT.md refreshed; this log.
+
+---
+
+## Session — 2026-11-14 — Claude Code (CLI): review, fixes, Page 4
+
+### User Input
+
+> Set up Lode; review the upstream branches; fix the bugs; update the README; the joystick does not work.
+
+### Planner Response
+
+Lode was seeded from the thesis repo. The review of the four stacked PRs found that the classic flows were wrong under forward Euler: Rössler and Rabinovich–Fabrikant went periodic, and Halvorsen was chaotic only because of Euler error. Classics moved to RK4, and RF, Halvorsen and Ossuary were retuned.
+
+Other fixes:
+- The NaN latch: the guard now runs before the step.
+- Point-major stepping, which pumped energy into Cluster: stepping is now sub-step-major.
+- The Tailwind 4 config, which had never loaded.
+- The dead joystick: pointer events, and the needle now updates.
+
+`TheVoid.tsx` went from 826 to 334 lines by splitting out `src/engine/` and four hooks. The vet script gained a whole-swarm gate. Details are in CHANGELOG 1.5.1.
+
+### User Input
+
+> Add a page 4. They look too similar to page 1 and 2, invent something please.
+
+### Planner Response
+
+A first draft of ten literature flows was dropped. Page 4 instead rebuilds proven chaotic flows with smooth coordinate operators: n-fold covers, twists and spherical inversion. A conjugacy keeps the Lyapunov spectrum, so each λ matches its base, and the vet checks every Jacobian. Ten systems were picked from offline renders: Trefoil, Starfish, Compass, Lantern, Crown, Conch, Lotus, Triskele, Quatrefoil and Galaxy. Design notes are in `docs/sessions/2026-11-14-review-fixes-and-forge.md`.
+
+### User Input
+
+> Merge everything, get main into a steady state, then open a docs-only PR with more ideas.
+
+### Planner Response
+
+The tap-to-control commit `75aba4e` was reverted on Wave 1, because the hover panel stays. Waves 1 to 4 were merged in order with merge commits, `main` was verified, and an ideas PR was opened.

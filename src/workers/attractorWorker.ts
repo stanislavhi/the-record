@@ -1,14 +1,16 @@
 /// <reference lib="webworker" />
-import type { AttractorParams, AttractorType } from '../components/types';
+import type { AttractorParams, AttractorType, Integrator, Vec3 } from '../components/types';
 import {
+    advancePoint,
     calculateAttractorStep,
-    isPointStable,
-    resetPoint,
+    getDrawStyle,
 } from '../components/attractors/attractorCalculations';
 
 interface AttractorSnapshot {
     type: AttractorType;
     params: AttractorParams;
+    integrator?: Integrator;
+    home?: Vec3;
     pointCount: number;
     /** flat [x, y, z, ...] — length = pointCount * 3 */
     points: Float32Array;
@@ -21,6 +23,8 @@ interface InitMessage {
     attractors: Array<{
         type: AttractorType;
         params: AttractorParams;
+        integrator?: Integrator;
+        home?: Vec3;
         pointCount: number;
         points: Float32Array;
     }>;
@@ -65,6 +69,11 @@ const runStep = () => {
 
     attractors.forEach((attr, aIdx) => {
         const pointCount = attr.pointCount;
+        // Page 3 systems need a StepContext (neighbours + per-point memory) that
+        // this flat-buffer protocol does not carry; the worker is gated off anyway.
+        const style = getDrawStyle(attr.type);
+        const discrete = style.mode === 'dots';
+        const stepInterval = discrete ? Math.max(style.stepInterval, henonStepInterval) : 1;
         const buf = new Float32Array(pointCount * subSteps * 3);
         for (let p = 0; p < pointCount; p++) {
             const base = p * 3;
@@ -75,16 +84,12 @@ const runStep = () => {
                 color: { r: 0, g: 0, b: 0 },
             };
             for (let s = 0; s < subSteps; s++) {
-                if (attr.type === 'henon') {
-                    if (s % henonStepInterval === 0) {
+                if (discrete) {
+                    if (s % stepInterval === 0) {
                         calculateAttractorStep(attr.type, pt, attr.params);
                     }
                 } else {
-                    const delta = calculateAttractorStep(attr.type, pt, attr.params);
-                    if (!isPointStable(pt)) resetPoint(pt);
-                    pt.x += delta.dx;
-                    pt.y += delta.dy;
-                    pt.z += delta.dz;
+                    advancePoint(attr, pt);
                 }
                 const bi = (p * subSteps + s) * 3;
                 buf[bi] = pt.x;
@@ -113,6 +118,8 @@ workerSelf.onmessage = (e: MessageEvent<IncomingMessage>) => {
             attractors = msg.attractors.map((a) => ({
                 type: a.type,
                 params: { ...a.params },
+                integrator: a.integrator,
+                home: a.home,
                 pointCount: a.pointCount,
                 points: new Float32Array(a.points),
             }));

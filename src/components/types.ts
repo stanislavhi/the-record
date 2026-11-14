@@ -24,7 +24,8 @@ export interface Rect {
     h: number;
 }
 
-export type AttractorType =
+/** Page 1 — the ten textbook systems. */
+export type ClassicAttractorType =
     | 'lorenz'
     | 'rossler'
     | 'henon'
@@ -35,6 +36,60 @@ export type AttractorType =
     | 'halvorsen'
     | 'dadras'
     | 'aizawa';
+
+/** Page 2 — ten systems invented for The Record (see attractors/originalCalculations.ts). */
+export type OriginalAttractorType =
+    | 'sigil'
+    | 'wick'
+    | 'cinder'
+    | 'gyre'
+    | 'moth'
+    | 'tidepool'
+    | 'ossuary'
+    | 'ripple'
+    | 'anvil'
+    | 'reed';
+
+/**
+ * Page 3 — ten systems from ten different classes of dynamics (IFS, complex
+ * map, cellular automaton, billiard, Hamiltonian, N-body, delay equation,
+ * flocking, quasi-periodic, impact). See attractors/menagerieCalculations.ts.
+ */
+export type MenagerieAttractorType =
+    | 'thicket'
+    | 'dendrite'
+    | 'colony'
+    | 'stadium'
+    | 'pendulum'
+    | 'cluster'
+    | 'echo'
+    | 'murmuration'
+    | 'loom'
+    | 'rebound';
+
+/**
+ * Page 4 — the forge: known chaotic flows pushed through smooth coordinate
+ * operators (n-fold covers, twists, spherical inversion). See
+ * attractors/forgeCalculations.ts.
+ */
+export type ForgeAttractorType =
+    | 'trefoil'
+    | 'starfish'
+    | 'compass'
+    | 'lantern'
+    | 'crown'
+    | 'conch'
+    | 'lotus'
+    | 'triskele'
+    | 'quatrefoil'
+    | 'galaxy';
+
+export type AttractorType = ClassicAttractorType | OriginalAttractorType | MenagerieAttractorType | ForgeAttractorType;
+
+/** Which set of ten is on screen. */
+export type AttractorPage = 'classic' | 'original' | 'menagerie' | 'forge';
+
+export const ATTRACTOR_PAGES: readonly AttractorPage[] = ['classic', 'original', 'menagerie', 'forge'];
 
 export interface AttractorParams {
     dt: number;
@@ -50,6 +105,24 @@ export interface Attractor {
     offset: { x: number; y: number };
     rect?: Rect;
     rotation?: Rotation3D;
+    /** Attractor-space point that should sit at the tile centre (subtracted before projection). */
+    center?: Rotation3D;
+    /** Step scheme for continuous flows. Default 'euler'; classics use 'rk4'. */
+    integrator?: Integrator;
+    /** Where a diverged point is reset to; must lie in the attractor's basin. Default (0.1, 0.1, 0.1). */
+    home?: Vec3;
+}
+
+/**
+ * 'euler' — forward Euler; the originals were tuned and vetted under it.
+ * 'rk4' — classical Runge–Kutta; reproduces textbook dynamics for the classics.
+ */
+export type Integrator = 'euler' | 'rk4';
+
+export interface Vec3 {
+    x: number;
+    y: number;
+    z: number;
 }
 
 export interface Particle {
@@ -69,6 +142,8 @@ export interface OverlayItem {
     color: RGB;
     scale: number;
     pointCount: number;
+    /** False for systems that ignore dt (maps, chaos game); the SPEED slider is disabled. */
+    speedAdjustable: boolean;
 }
 
 export type Theme = 'dark' | 'light';
