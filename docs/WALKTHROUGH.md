@@ -100,8 +100,9 @@ The fixed toolbar at the bottom center of the screen exposes whole-app actions:
 | ↺ | **Reset All** — flush every tile's trails |
 | 🎲 All | **Randomize All** — randomize every attractor at once |
 | Palette ▾ | **Palette preset** — apply Original, Neon, Pastel, Mono, Warm, or Cold across all 10 attractors |
+| Perf ▾ | **Performance mode** — Low / Med / High, adjusting render sub-steps and glow (persisted to `localStorage`) |
 | PNG | **Snapshot** — save the current canvas as a timestamped PNG |
-| ● Rec / ■ Stop | **Record** — start/stop a WebM video of the canvas |
+| ● Rec / ■ 00:12 | **Record** — WebM video of the canvas. Button label shows the elapsed time while recording and auto-stops at 60 s |
 | Tour | **Narrative tour** — step through each attractor with equations and metadata |
 | ☼ / ☾ | **Theme toggle** — switch between dark and light |
 | ▦ | **Stats** — toggle the FPS / points / energy HUD |
@@ -122,15 +123,19 @@ Clicks inside the toolbar are excluded from the canvas "merge" handler, so press
 | `T` | Toggle dark / light theme |
 | `R` | Randomize every attractor |
 | `P` | Save a PNG snapshot |
-| `V` | Start / stop WebM recording |
+| `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
-| `←` / `→` | Navigate within the tour when open |
+| `M` | Mute / unmute the generative audio synth |
+| `+` / `-` | Add / remove a point on the last-focused tile |
+| `← ↑ → ↓` | Rotate the last-focused tile's joystick (tour nav takes priority while the tour is open) |
 
 Shortcuts are ignored while typing inside inputs, textareas, or contenteditable regions (except `Escape`, which always resets).
 
 ## Narrative Tour
 
 The tour is a guided walkthrough of all 10 attractors. Open it from the toolbar or with `N`. Each card shows the attractor's name, discoverer + year, equations, Lyapunov exponent, and a short blurb explaining what makes it interesting. Use `←` / `→` to step through and `Esc` to close.
+
+While the tour is open, the nine non-current tiles dim to ~22% opacity (300 ms transition) so the spotlighted attractor stays visually dominant. Canvas trails keep rendering at full intensity — only the tile frame overlay dims.
 
 ## PNG + WebM Export
 
@@ -221,11 +226,35 @@ If the canvas initialization or a render step throws, the UI falls back to a rea
 
 ---
 
+## Generative Audio
+
+A muted-by-default synth sits behind the merge: an `AudioContext` with 10 sine voices (one per attractor), each fed through a lowpass filter + stereo panner + gain stage, mixed through a master gain and compressor to the destination. The filter cutoff is modulated by a shared 0.1 Hz LFO for a slow, restless texture.
+
+Every ~4 render frames, the synth reads `points[0]` from each attractor and maps:
+
+- `x` → oscillator pitch, `200 – 1200 Hz` on a log curve
+- `y` → stereo pan, `-1 .. +1`
+- `z` → filter cutoff, `250 – 4000 Hz` on a log curve
+
+Default volume is `0.1`. The synth starts as part of the merge click (browser autoplay policy) and stays muted until you press `M` or click the ♪ panel above the toolbar. When the sim is paused, the master gain ducks to `0` over 100 ms so the silence is clean.
+
+## Performance Mode
+
+The toolbar's **Perf** select switches between three presets:
+
+| Preset | Sub-steps | Glow cap | Use when |
+|--------|-----------|----------|----------|
+| Low | 1 | 0 | Laptops, battery, many points, or audio-heavy sessions |
+| Med | 20 | 10 | Default — matches the 1.0–1.3 experience |
+| High | 40 | 14 | Desktops with headroom; denser, glowier trails |
+
+`PERF_PRESETS` lives in `src/components/constants.ts`. The active preset is persisted to `localStorage` under `perfMode` and honored on reload.
+
 ## Performance Notes
 
 - Grid uses 2px cells for maximum visual fidelity
-- Default 20 physics sub-steps per frame for smooth curves
+- Physics sub-steps per frame adapt to the active Perf preset (1 / 20 / 40)
 - Canvas clipping prevents attractors from drawing outside their tile
 - Points that diverge (|x|, |y|, or |z| > 1000) auto-reset to origin
 - FPS sampling runs on a rolling 500 ms window so a single janky frame doesn't dominate the reading
-- Performance presets (low/med/high) are scaffolded in `constants.ts` under `PERF_PRESETS` and will be exposed as a toolbar toggle in Wave 3
+- A Web Worker physics scaffold lives at `src/workers/attractorWorker.ts` (init / step / setParams / setPointCount protocol with transferable `Float32Array` buffers). The `USE_WORKER` flag in `constants.ts` gates boot; default `false`. The main thread still owns drawing — wiring the worker's trajectory buffers into the draw step is a follow-up.

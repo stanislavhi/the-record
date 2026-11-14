@@ -31,12 +31,14 @@ An interactive visualization of chaotic attractors — mathematical systems that
   - 🎲 **Randomize** — Instantly randomize color, rotation, scale, and speed
   - 🚿 **Flush** — Clear trail history for a tile
   - ℹ️ **Info Tooltip** — Hover the tile title for equations, Lyapunov exponent, and discoverer
-- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, Palette presets, PNG export, WebM recorder, Tour, Theme toggle, Stats overlay, Help modal
+- **Global Toolbar** — Pause, Reset All, 🎲 Randomize All, Palette presets, **Perf mode (Low/Med/High)**, PNG export, **WebM recorder with elapsed counter + 60 s soft cap**, Tour, Theme toggle, Stats overlay, Help modal
+- **Generative audio synth** — 10 oscillator voices mapped from each attractor (`x → pitch`, `y → pan`, `z → filter cutoff`), default muted, `M` to toggle, ducks on pause
+- **Narrative tour with grid spotlight** — opening the Tour dims the other nine tiles so the current attractor stays lit
 - **Narrative Tour** — Guided walkthrough of all 10 attractors (toolbar "Tour" or `N`)
 - **PNG + WebM Export** — Snapshot the canvas as PNG or record a WebM video
 - **6 Palette Presets** — Original, Neon, Pastel, Mono, Warm, Cold — applied to all 10 attractors
 - **Dark + Light themes** — CSS-variable-driven, tuned glow/alpha per theme, persisted to `localStorage`, honors `prefers-color-scheme`
-- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour
+- **Keyboard Shortcuts** — `Space` pause, `Esc` reset, `?` help, `S` stats, `T` theme, `R` randomize all, `P` PNG, `V` record, `N` tour, `M` mute, `+/-` point count on focused tile, arrows rotate focused joystick
 - **Touch Support** — Pointer Events across joystick and canvas
 - **Responsive Grid** — 2 / 3 / 5 columns across mobile / tablet / desktop
 - **Accessibility** — ARIA labels, visible focus rings, keyboard-reachable controls
@@ -87,8 +89,11 @@ npm run preview
 | `T` | Toggle dark / light theme |
 | `R` | Randomize all attractors |
 | `P` | Save PNG snapshot of the canvas |
-| `V` | Start / stop WebM recording |
+| `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
+| `M` | Mute / unmute the generative audio synth |
+| `+` / `-` | Add / remove a point on the last-focused tile |
+| `Arrows` | Rotate the last-focused tile's joystick |
 
 ## 🧮 The Attractors
 
@@ -122,6 +127,7 @@ src/
 │   ├── TourModal.tsx          # Narrative walkthrough of all 10 attractors
 │   ├── IntroOverlay.tsx       # "CLICK TO MERGE" with loading dots
 │   ├── PausedOverlay.tsx      # Dimmed pause state
+│   ├── AudioPanel.tsx         # Volume + mute for the generative synth
 │   ├── ErrorBoundary.tsx      # Readable fallback if canvas fails
 │   ├── constants.ts           # Attractor configs + LAYOUT/CANVAS_STYLE/Z_INDEX/KEYBINDINGS/PERF_PRESETS
 │   ├── types.ts               # Shared TypeScript interfaces
@@ -137,7 +143,13 @@ src/
 │   ├── useKeyboardShortcuts.ts
 │   ├── useTheme.ts            # localStorage + matchMedia theme
 │   ├── useFPS.ts              # Rolling FPS counter
-│   └── useBreakpoint.ts       # Responsive mobile/tablet/desktop
+│   ├── useBreakpoint.ts       # Responsive mobile/tablet/desktop
+│   ├── useAttractorSynth.ts   # Lifecycle + gesture-gated audio start
+│   └── useAttractorWorker.ts  # Lifecycle for the physics Web Worker
+├── audio/
+│   └── AttractorSynth.ts      # Web Audio graph (10 sine voices + filter LFO + compressor)
+├── workers/
+│   └── attractorWorker.ts     # Off-thread physics (init / step / setParams / setPointCount)
 ├── utils/
 │   ├── themeTokens.ts         # Canvas-facing theme token bridge
 │   ├── palettes.ts            # Color palette presets

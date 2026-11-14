@@ -1,13 +1,21 @@
 import { memo } from 'react';
-import type { Theme } from './types';
+import type { PerfMode, Theme } from './types';
 import { PALETTE_LABELS, type PaletteName } from '../utils/palettes';
+
+const PERF_LABELS: Record<PerfMode, string> = {
+    low: 'Low',
+    med: 'Med',
+    high: 'High',
+};
 
 interface ToolbarProps {
     paused: boolean;
     theme: Theme;
     statsVisible: boolean;
     palette: PaletteName;
+    perfMode: PerfMode;
     recording: boolean;
+    recordElapsedLabel: string | null;
     onTogglePause: () => void;
     onResetAll: () => void;
     onToggleTheme: () => void;
@@ -16,6 +24,7 @@ interface ToolbarProps {
     onToggleTour: () => void;
     onRandomizeAll: () => void;
     onPaletteChange: (palette: PaletteName) => void;
+    onPerfModeChange: (mode: PerfMode) => void;
     onSnapshot: () => void;
     onToggleRecording: () => void;
 }
@@ -51,7 +60,9 @@ const Toolbar = memo((props: ToolbarProps) => {
         theme,
         statsVisible,
         palette,
+        perfMode,
         recording,
+        recordElapsedLabel,
         onTogglePause,
         onResetAll,
         onToggleTheme,
@@ -60,6 +71,7 @@ const Toolbar = memo((props: ToolbarProps) => {
         onToggleTour,
         onRandomizeAll,
         onPaletteChange,
+        onPerfModeChange,
         onSnapshot,
         onToggleRecording,
     } = props;
@@ -105,14 +117,37 @@ const Toolbar = memo((props: ToolbarProps) => {
                         ))}
                     </select>
                 </label>
+                <label
+                    className="flex items-center gap-1 px-2 py-1 text-label uppercase tracking-widest font-mono rounded border bg-black/30 border-border"
+                    style={{ backdropFilter: 'blur(6px)' }}
+                    title="Performance preset (substeps + glow)"
+                >
+                    <span className="text-ink-high/70">Perf</span>
+                    <select
+                        aria-label="Performance mode"
+                        value={perfMode}
+                        onChange={(e) => onPerfModeChange(e.target.value as PerfMode)}
+                        className="bg-transparent text-ink-high border-0 outline-none cursor-pointer font-mono text-label uppercase tracking-widest"
+                    >
+                        {(Object.keys(PERF_LABELS) as PerfMode[]).map((m) => (
+                            <option key={m} value={m} className="bg-black text-ink-high">
+                                {PERF_LABELS[m]}
+                            </option>
+                        ))}
+                    </select>
+                </label>
                 <ToolbarButton
                     label="PNG"
                     title="Save a PNG snapshot"
                     onClick={onSnapshot}
                 />
                 <ToolbarButton
-                    label={recording ? '■ Stop' : '● Rec'}
-                    title={recording ? 'Stop recording and download WebM' : 'Record WebM video'}
+                    label={recording ? `■ ${recordElapsedLabel ?? '00:00'}` : '● Rec'}
+                    title={
+                        recording
+                            ? 'Stop recording and download WebM (auto-stops at 60s)'
+                            : 'Record WebM video (max 60s)'
+                    }
                     onClick={onToggleRecording}
                     active={recording}
                 />

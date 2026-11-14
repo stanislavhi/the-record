@@ -8,6 +8,7 @@ import { getDisplayName } from './attractors/attractorInfo';
 interface AttractorTileProps {
     item: OverlayItem;
     speed: number;
+    dimmed: boolean;
     onRotate: (index: number, delta: { dx: number; dy: number }) => void;
     onScaleChange: (index: number, value: number) => void;
     onSpeedChange: (index: number, value: number) => void;
@@ -15,12 +16,14 @@ interface AttractorTileProps {
     onColorChange: (index: number, hex: string) => void;
     onFlush: (index: number) => void;
     onRandomize: (index: number) => void;
+    onTileFocus: (index: number) => void;
 }
 
 const AttractorTile = memo((props: AttractorTileProps) => {
     const {
         item,
         speed,
+        dimmed,
         onRotate,
         onScaleChange,
         onSpeedChange,
@@ -28,6 +31,7 @@ const AttractorTile = memo((props: AttractorTileProps) => {
         onColorChange,
         onFlush,
         onRandomize,
+        onTileFocus,
     } = props;
 
     const accent = `rgb(${item.color.r}, ${item.color.g}, ${item.color.b})`;
@@ -43,8 +47,11 @@ const AttractorTile = memo((props: AttractorTileProps) => {
                 width: item.rect.w,
                 height: item.rect.h,
                 pointerEvents: 'none',
+                opacity: dimmed ? 0.22 : 1,
             }}
-            className="group flex flex-col justify-between p-4 box-border z-overlay"
+            className="group flex flex-col justify-between p-4 box-border z-overlay transition-opacity duration-300"
+            onFocusCapture={() => onTileFocus(item.index)}
+            onPointerEnter={() => onTileFocus(item.index)}
         >
             <div className="group/title relative mx-auto pointer-events-auto">
                 <button
