@@ -87,26 +87,32 @@ Worker files need `/// <reference lib="webworker" />` at the top so `DedicatedWo
 Always Ctrl/Cmd-passthrough (`if (e.ctrlKey || e.metaKey) return;`) so browser zoom still works. The `KEYBINDINGS` map uses `e.code` values `Minus` and `Equal` (not `Plus`).
 
 ### Last-focused tile
-`lastFocusedIndexRef` lives in `TheVoid.tsx` and is updated from `AttractorTile.onFocusCapture` + `onPointerEnter`. Keyboard shortcuts (`+/-`, arrows, `M`) dispatch to that index. Tour nav (`←`/`→`) takes priority while the tour modal is open.
+`focusedIndexRef` lives in `TheVoid.tsx` and is updated from `AttractorTile.onFocusCapture` + `onPointerEnter`. Keyboard shortcuts (`+/-`, arrows, `M`) dispatch to that index. Tour nav (`←`/`→`) takes priority while the tour modal is open.
 
 ### Adding an attractor (Wave 4 pattern)
-1. Add the type name to `ClassicAttractorType`, `OriginalAttractorType` or `MenagerieAttractorType` in `types.ts`.
+1. Add the type name to `ClassicAttractorType`, `OriginalAttractorType`, `MenagerieAttractorType` or `ForgeAttractorType` in `types.ts`.
 2. Add the calculator to the matching `*Calculations.ts`. Maps and hidden-state systems mutate `pt` and return a zero delta. Anything drawn as dust needs a `DrawStyle` entry (`mode: 'dots'`) — never test `type === 'henon'` in the render loop; use `getDrawStyle()`.
-3. Add an `ATTRACTOR_INFO` entry (tooltip + tour) — `badge: 'original'` / `'menagerie'` plus the shared `note`.
+3. Add an `ATTRACTOR_INFO` entry (tooltip + tour) — `badge: 'original'` / `'menagerie'` / `'forge'` plus the shared `note`.
 4. Add the roster entry in `constants.ts` with `params`, `scale`, `rotation`, and `center` (the orbit's mean position, from the vet script) if the orbit is off-origin. Flat systems use `FACE_CAMERA` (add `z: Math.PI` if "up" must point up).
-5. Run `npm run vet:attractors` and copy the measured Lyapunov exponent into the info entry (Page 2 only — Page 3 is informational there, so probe sensitivity by hand). Then screenshot both themes: pale colours (ivory, bone, pure white) vanish on the light theme.
+5. Run `npm run vet:attractors` and copy the measured Lyapunov exponent into the info entry. Classics, originals and forge systems must read `chaotic` (LE > 0.02; `weak` fails). Classic and forge flows set `integrator: 'rk4'`; originals use Euler. If the basin is small, set `home` and a tighter `initPoints` spacing (see Rabinovich–Fabrikant). (Page 3 LE is informational — Page 3 is informational there, so probe sensitivity by hand). Then screenshot both themes: pale colours (ivory, bone, pure white) vanish on the light theme.
 6. Pages are exactly ten each — the synth allocates ten voices and the grid is 5 × 2 on desktop.
+
+### Forge systems (Page 4 pattern)
+- A forge system is `calc(operator(base))` in `forgeCalculations.ts`. A `cover` base **must** be symmetric under (x, y, z) → (−x, −y, z) or the branch of ζ = ξ^(n/2) breaks. Check before adding a base.
+- λ must match the base's λ (conjugacy). If it doesn't, the operator or its Jacobian is wrong.
+- Seed covers with `liftToCover()` and set `home` to the seed. Inversion: keep `c` off the attractor (vet `maxR` should stay small; a pass near `c` throws streaks across tiles), and seed from a point already on the base attractor, not from the raw base seed, or the transient arcs out of the tile.
+- Screen candidates offline before wiring: render the orbit in two or three planes to a PPM (see `docs/sessions/` for the forge session).
 
 ### Hidden-state systems (Page 3 pattern)
 - Keep per-point memory in a module-level `WeakMap<object, State>` keyed by the point object, and per-tile memory keyed by `ctx.points` (the array). `stateOf(store, key, init)` lazily creates it. Never add fields to `Point3D`.
 - Calculators receive `ctx?: StepContext = { points, index }`. Treat it as optional — the worker and the vet script may call without it (`ctxOf(pt, ctx)` falls back to a single-point context).
-- Interacting systems that need all accelerations per sub-step compute them when `ctx.index === 0` and cache in the per-tile state (see Cluster).
+- Interacting systems that need all accelerations per sub-step compute them when `ctx.index === 0` and cache in the per-tile state (see Cluster). This relies on the render loop stepping **sub-step-major** (`engine/drawAttractors.ts`); never reintroduce a per-point inner sub-step loop.
 - `resetPoint()` cannot see hidden state: guard your own state for non-finite values and reinitialise inside the calculator.
 - Never normalise a velocity to a constant magnitude when a wall force is supposed to turn the agent around — cap it instead (Murmuration bug, fixed in Wave 4).
-- The vet script's LE column is meaningless for these (it perturbs the plotted point only). Probe sensitivity with two copies released 1e-6 apart and print the separation over time.
+- The vet script's LE column is meaningless for these (it perturbs the plotted point only); its swarm column (all ten points, render-loop order, any reset fails) is the stability check that counts. Probe sensitivity with two copies released 1e-6 apart and print the separation over time.
 
 ### Page switch
-`handlePageChange` in `TheVoid.tsx` is the only place `attractors.current` is replaced. Anything that caches per-attractor state (speeds, palette, tour index, focused tile) must be reset there. The worker is not re-inited on switch (gated off anyway).
+`handlePageChange` in `TheVoid.tsx` (via `roster.replace()`) is the only place the roster is replaced. Anything that caches per-attractor state (speeds, palette, tour index, focused tile) must be reset there. The worker is not re-inited on switch (gated off anyway).
 
 ---
 

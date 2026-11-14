@@ -1,5 +1,6 @@
 import type { Attractor, AttractorPage, PerfConfig, PerfMode, RGB, Rotation3D } from './types';
 import { rgbToHsl, hslToRgb } from './utils/colorUtils';
+import { liftToCover } from './attractors/forgeCalculations';
 
 export const GRID_SIZE = 2;
 export const DECAY_RATE = 0.9995;
@@ -75,6 +76,7 @@ export const KEYBINDINGS = {
     page1: 'Digit1',
     page2: 'Digit2',
     page3: 'Digit3',
+    page4: 'Digit4',
 } as const;
 
 export const PAGE_STORAGE_KEY = 'attractorPage';
@@ -84,6 +86,7 @@ export const PAGE_LABELS: Record<AttractorPage, { short: string; title: string; 
     classic: { short: '1', title: 'Page 1 — the ten classics (1)', phase: 'PHASE 10: ACTIVE' },
     original: { short: '2', title: 'Page 2 — ten original attractors invented for The Record (2)', phase: 'PAGE 2: ORIGINALS' },
     menagerie: { short: '3', title: 'Page 3 — the menagerie: ten different kinds of dynamics (3)', phase: 'PAGE 3: MENAGERIE' },
+    forge: { short: '4', title: 'Page 4 — the forge: chaotic flows reshaped by covers, twists and inversion (4)', phase: 'PAGE 4: FORGE' },
 };
 
 /**
@@ -103,28 +106,34 @@ export const POINT_LIMITS = { min: 1, max: 50 } as const;
 export const SPEED_LIMITS = { min: 0.001, max: 0.03, step: 0.001 } as const;
 export const SCALE_LIMITS = { min: 0.1, max: 100, step: 0.1 } as const;
 
-const initPoints = (x: number, y: number, z: number, color: RGB) => {
+const initPoints = (x: number, y: number, z: number, color: RGB, spacing = 0.02) => {
     const [h, s, l] = rgbToHsl(color.r, color.g, color.b);
     return Array(10).fill(0).map((_, i) => ({
-        x: x + i * 0.02,
-        y: y + i * 0.02,
-        z: z + i * 0.02,
+        x: x + i * spacing,
+        y: y + i * spacing,
+        z: z + i * spacing,
         color: hslToRgb((h + i * 0.02) % 1, s, l)
     }));
 };
 
-/** Page 1 — the ten classics. */
+/**
+ * Page 1 — the ten classics, at textbook parameters. Continuous flows use RK4
+ * so their dynamics match the literature: under forward Euler at these dt,
+ * Rössler and Rabinovich–Fabrikant collapse onto periodic orbits.
+ * Rabinovich–Fabrikant (α=1.1, γ=0.87) has a small basin around (−1, 0, 0.5),
+ * hence the tight 0.005 swarm spacing and the matching `home`.
+ */
 export const createClassicAttractors = (): Attractor[] => [
-    { type: 'lorenz', points: initPoints(0.1, 0, 0, { r: 255, g: 255, b: 255 }), color: { r: 255, g: 255, b: 255 }, params: { sigma: 10, rho: 28, beta: 8 / 3, dt: 0.008 }, scale: 2.1, offset: { x: 0, y: 0 }, rotation: { x: -1.3, y: 0, z: 0.4 } },
-    { type: 'rossler', points: initPoints(0.1, 0.1, 0.1, { r: 255, g: 215, b: 0 }), color: { r: 255, g: 215, b: 0 }, params: { a: 0.2, b: 0.2, c: 5.7, dt: 0.02 }, scale: 2.4, offset: { x: 0, y: 0 }, rotation: { x: -1.4, y: 1.5, z: 0.5 } },
+    { type: 'lorenz', points: initPoints(0.1, 0, 0, { r: 255, g: 255, b: 255 }), color: { r: 255, g: 255, b: 255 }, params: { sigma: 10, rho: 28, beta: 8 / 3, dt: 0.008 }, scale: 2.1, offset: { x: 0, y: 0 }, rotation: { x: -1.3, y: 0, z: 0.4 } , integrator: 'rk4' },
+    { type: 'rossler', points: initPoints(0.1, 0.1, 0.1, { r: 255, g: 215, b: 0 }), color: { r: 255, g: 215, b: 0 }, params: { a: 0.2, b: 0.2, c: 5.7, dt: 0.02 }, scale: 2.4, offset: { x: 0, y: 0 }, rotation: { x: -1.4, y: 1.5, z: 0.5 } , integrator: 'rk4' },
     { type: 'henon', points: initPoints(0, 0, 0, { r: 255, g: 0, b: 128 }), color: { r: 255, g: 0, b: 128 }, params: { a: 1.4, b: 0.3, dt: 0 }, scale: 40, offset: { x: 0, y: 0 } },
-    { type: 'chua', points: initPoints(0.1, 0, 0, { r: 255, g: 100, b: 50 }), color: { r: 255, g: 100, b: 50 }, params: { alpha: 15.6, beta: 28, m0: -1.143, m1: -0.714, dt: 0.02 }, scale: 21, offset: { x: 0, y: 0 }, rotation: { x: -0.4, y: 0.6, z: 0.1 } },
-    { type: 'sprott', points: initPoints(0.1, 0.1, 0.1, { r: 0, g: 220, b: 255 }), color: { r: 0, g: 220, b: 255 }, params: { a: 2.07, b: 1.79, dt: 0.015 }, scale: 18, offset: { x: 0, y: 0 }, rotation: { x: -0.5, y: 0, z: 0.5 } },
-    { type: 'four_wing', points: initPoints(0.1, 0.1, 0.1, { r: 50, g: 255, b: 80 }), color: { r: 50, g: 255, b: 80 }, params: { a: 0.2, b: 0.01, c: -0.4, dt: 0.04 }, scale: 16, offset: { x: 0, y: 0 }, rotation: { x: -0.5, y: 1.5, z: 0.2 } },
-    { type: 'rabinovich', points: initPoints(0.1, 0.1, 0.1, { r: 0, g: 250, b: 154 }), color: { r: 0, g: 250, b: 154 }, params: { alpha: 0.2, gamma: 0.1, dt: 0.01 }, scale: 35, offset: { x: 0, y: 0 }, rotation: { x: -0.8, y: 2.5, z: 0.5 } },
-    { type: 'halvorsen', points: initPoints(0.1, 0, 0, { r: 255, g: 20, b: 180 }), color: { r: 255, g: 20, b: 180 }, params: { a: 1.89, dt: 0.01 }, scale: 6, offset: { x: 0, y: 0 }, rotation: { x: -0.8, y: 0, z: 0 } },
-    { type: 'dadras', points: initPoints(0.1, 0.1, 0, { r: 255, g: 120, b: 255 }), color: { r: 255, g: 120, b: 255 }, params: { p: 3, q: 2.7, r: 1.7, s: 2, e: 9, dt: 0.002 }, scale: 7.2, offset: { x: 0, y: 0 }, rotation: { x: -1.0, y: 0, z: 0 } },
-    { type: 'aizawa', points: initPoints(0.1, 0, 0, { r: 255, g: 140, b: 50 }), color: { r: 255, g: 140, b: 50 }, params: { a: 0.95, b: 0.7, c: 0.6, d: 3.5, e: 0.25, f: 0.1, dt: 0.01 }, scale: 24, offset: { x: 0, y: 0 }, rotation: { x: -1.3, y: 0, z: 0 } },
+    { type: 'chua', points: initPoints(0.1, 0, 0, { r: 255, g: 100, b: 50 }), color: { r: 255, g: 100, b: 50 }, params: { alpha: 15.6, beta: 28, m0: -1.143, m1: -0.714, dt: 0.02 }, scale: 21, offset: { x: 0, y: 0 }, rotation: { x: -0.4, y: 0.6, z: 0.1 } , integrator: 'rk4' },
+    { type: 'sprott', points: initPoints(0.1, 0.1, 0.1, { r: 0, g: 220, b: 255 }), color: { r: 0, g: 220, b: 255 }, params: { a: 2.07, b: 1.79, dt: 0.015 }, scale: 18, offset: { x: 0, y: 0 }, rotation: { x: -0.5, y: 0, z: 0.5 } , integrator: 'rk4' },
+    { type: 'four_wing', points: initPoints(0.1, 0.1, 0.1, { r: 50, g: 255, b: 80 }), color: { r: 50, g: 255, b: 80 }, params: { a: 0.2, b: 0.01, c: -0.4, dt: 0.03 }, scale: 16, offset: { x: 0, y: 0 }, rotation: { x: -0.5, y: 1.5, z: 0.2 } , integrator: 'rk4' },
+    { type: 'rabinovich', points: initPoints(-1, 0, 0.5, { r: 0, g: 250, b: 154 }, 0.005), color: { r: 0, g: 250, b: 154 }, params: { alpha: 1.1, gamma: 0.87, dt: 0.01 }, scale: 35, offset: { x: 0, y: 0 }, rotation: { x: -0.8, y: 2.5, z: 0.5 } , integrator: 'rk4', home: { x: -1, y: 0, z: 0.5 }, center: { x: -1.17, y: 1.01, z: 0.59 } },
+    { type: 'halvorsen', points: initPoints(0.1, 0, 0, { r: 255, g: 20, b: 180 }), color: { r: 255, g: 20, b: 180 }, params: { a: 1.4, dt: 0.01 }, scale: 6, offset: { x: 0, y: 0 }, rotation: { x: -0.8, y: 0, z: 0 } , integrator: 'rk4' },
+    { type: 'dadras', points: initPoints(0.1, 0.1, 0, { r: 255, g: 120, b: 255 }), color: { r: 255, g: 120, b: 255 }, params: { p: 3, q: 2.7, r: 1.7, s: 2, e: 9, dt: 0.002 }, scale: 7.2, offset: { x: 0, y: 0 }, rotation: { x: -1.0, y: 0, z: 0 } , integrator: 'rk4' },
+    { type: 'aizawa', points: initPoints(0.1, 0, 0, { r: 255, g: 140, b: 50 }), color: { r: 255, g: 140, b: 50 }, params: { a: 0.95, b: 0.7, c: 0.6, d: 3.5, e: 0.25, f: 0.1, dt: 0.01 }, scale: 24, offset: { x: 0, y: 0 }, rotation: { x: -1.3, y: 0, z: 0 } , integrator: 'rk4' },
 ];
 
 /**
@@ -140,7 +149,7 @@ export const createOriginalAttractors = (): Attractor[] => [
     { type: 'gyre', points: initPoints(0.1, 0.1, 0, { r: 0, g: 200, b: 180 }), color: { r: 0, g: 200, b: 180 }, params: { a: 3, b: 2.7, c: 2.5, d: 4, e: 9, k: 0.5, dt: 0.005 }, scale: 7, offset: { x: 0, y: 0 }, rotation: { x: -1.0, y: 0.3, z: 0 }, center: { x: 1, y: 0, z: 0.2 } },
     { type: 'moth', points: initPoints(0.1, 0.1, 0.1, { r: 255, g: 120, b: 180 }), color: { r: 255, g: 120, b: 180 }, params: { a: 4, b: 5, c: 0.1, dt: 0.015 }, scale: 9, offset: { x: 0, y: 0 }, rotation: { x: -0.6, y: 0.8, z: 0.3 } },
     { type: 'tidepool', points: initPoints(0.5, 0, 0.1, { r: 60, g: 220, b: 160 }), color: { r: 60, g: 220, b: 160 }, params: { a: 3, b: 0.2, c: 5, d: 0.05, e: 4, dt: 0.01 }, scale: 12, offset: { x: 0, y: 0 }, rotation: { x: -1.2, y: 0, z: 0 } },
-    { type: 'ossuary', points: initPoints(0.1, 0.1, 0.1, { r: 200, g: 170, b: 255 }), color: { r: 200, g: 170, b: 255 }, params: { a: 1, k: 2, w: 5, dt: 0.01 }, scale: 22, offset: { x: 0, y: 0 }, rotation: { x: -0.8, y: 0.5, z: 0.2 } },
+    { type: 'ossuary', points: initPoints(0.1, 0.1, 0.1, { r: 200, g: 170, b: 255 }), color: { r: 200, g: 170, b: 255 }, params: { a: 1, k: 1, w: 5, dt: 0.01 }, scale: 22, offset: { x: 0, y: 0 }, rotation: { x: -0.8, y: 0.5, z: 0.2 } },
     { type: 'ripple', points: initPoints(0.1, 0.2, 0.3, { r: 120, g: 200, b: 255 }), color: { r: 120, g: 200, b: 255 }, params: { a: 2.24, b: 0.43, c: -0.65, d: -2.43, e: 0.6, dt: 0 }, scale: 60, offset: { x: 0, y: 0 } },
     { type: 'anvil', points: initPoints(0.1, 0, 0, { r: 170, g: 190, b: 210 }), color: { r: 170, g: 190, b: 210 }, params: { a: 1.2, b: 0.2, k: 2, dt: 0.01 }, scale: 28, offset: { x: 0, y: 0 }, rotation: { x: -0.7, y: 0.9, z: 0 } },
     { type: 'reed', points: initPoints(0.1, 0, 0, { r: 180, g: 255, b: 60 }), color: { r: 180, g: 255, b: 60 }, params: { a: 0.7, b: 2, c: 0.2, k: 2, dt: 0.01 }, scale: 20, offset: { x: 0, y: 0 }, rotation: { x: -0.9, y: -0.6, z: 0.1 }, center: { x: -0.3, y: 0, z: 0 } },
@@ -164,20 +173,49 @@ export const createMenagerieAttractors = (): Attractor[] => [
     { type: 'rebound', points: initPoints(0, 0, 0, { r: 255, g: 80, b: 80 }), color: { r: 255, g: 80, b: 80 }, params: { A: 0.15, omega: 7, e: 0.6, g: 1, k: 0.4, R: 1.5, dt: 0.01 }, scale: 25, offset: { x: 0, y: 0 }, rotation: { x: FACE_CAMERA.x + 0.25, y: FACE_CAMERA.y + 0.5, z: Math.PI }, center: { x: 0, y: 1.8, z: 0 } },
 ];
 
+/**
+ * Page 4 — the forge. Known chaotic flows rebuilt by smooth coordinate
+ * operators (see attractors/forgeCalculations.ts). Covers are seeded by
+ * lifting a base-space seed with `liftToCover`; their petals lie in the
+ * x–y plane, so they face the camera with a tilt (`TILT`) to show depth.
+ * Pure ODEs, so RK4 like the classics; `center` is the vetted orbit mean.
+ */
+const TILT = (dx: number, dz = 0): Rotation3D => ({ x: FACE_CAMERA.x + dx, y: FACE_CAMERA.y, z: dz });
+const LORENZ = { sigma: 10, rho: 28, beta: 8 / 3 };
+const BURKE = { s: 10, v: 4.272 };
+const RUCK = { kappa: 2, lambda: 6.7 };
+const CHEN_LEE = { a: 5, b: -10, c: -0.38 };
+const seed = (x: number, y: number, z: number, n: number) => liftToCover(x, y, z, n);
+const forge = (
+    type: Attractor['type'], at: { x: number; y: number; z: number }, color: RGB,
+    params: Attractor['params'], scale: number, rotation: Rotation3D, center?: { x: number; y: number; z: number },
+): Attractor => ({
+    type, points: initPoints(at.x, at.y, at.z, color), color, params, scale, offset: { x: 0, y: 0 },
+    rotation, integrator: 'rk4', home: { ...at }, ...(center ? { center } : {}),
+});
+
+export const createForgeAttractors = (): Attractor[] => [
+    forge('trefoil', seed(1, 1, 20, 3), { r: 255, g: 90, b: 90 }, { ...LORENZ, n: 3, dt: 0.004 }, 10, TILT(0), { x: 0, y: 0, z: 23.5 }),
+    forge('starfish', seed(1, 1, 20, 5), { r: 255, g: 170, b: 60 }, { ...LORENZ, n: 5, dt: 0.004 }, 24, TILT(0), { x: 0, y: 0, z: 23.5 }),
+    forge('compass', seed(0.6, 0, 0, 8), { r: 120, g: 160, b: 255 }, { ...BURKE, n: 8, dt: 0.003 }, 75, TILT(0), { x: 0, y: 0, z: 0.14 }),
+    forge('lantern', { x: -2.5292, y: -0.0296, z: 3.4432 }, { r: 255, g: 210, b: 70 }, { ...CHEN_LEE, cx: 0, cy: 0, cz: -2, R: 10, dt: 0.003 }, 12, TILT(Math.PI / 2), { x: 0, y: 0, z: 7.46 }),
+    forge('crown', seed(1, 0, 4.5, 4), { r: 60, g: 220, b: 140 }, { ...RUCK, n: 4, dt: 0.006 }, 30, TILT(0), { x: 0, y: 0, z: 6.5 }),
+    forge('conch', { x: 0.8108, y: 1.0135, z: 19.9324 }, { r: 0, g: 200, b: 255 }, { ...LORENZ, cx: 15, cy: 0, cz: 25, R: 15, dt: 0.004 }, 7, { x: -0.6, y: 0.5, z: 0 }, { x: 6.01, y: 2.0, z: 24.47 }),
+    forge('lotus', seed(0.5, 0, 0.5, 6), { r: 255, g: 100, b: 200 }, { a: 0.75, b: 0.45, n: 6, dt: 0.01 }, 85, TILT(0), { x: 0, y: 0, z: 0.96 }),
+    forge('triskele', seed(0.5, 0.5, 0.1, 3), { r: 170, g: 110, b: 255 }, { a: 0.2, b: 0.01, c: -0.4, n: 3, dt: 0.02 }, 48, TILT(0)),
+    forge('quatrefoil', seed(1, 1, 1, 4), { r: 255, g: 130, b: 70 }, { ...CHEN_LEE, n: 4, dt: 0.002 }, 19, TILT(0), { x: 0, y: 0, z: 8.2 }),
+    forge('galaxy', seed(1, 0, 4.5, 3), { r: 90, g: 230, b: 210 }, { ...RUCK, n: 3, twist: 0.3, dt: 0.006 }, 22, TILT(0), { x: 0, y: 0, z: 6.5 }),
+];
+
 const PAGE_FACTORIES: Record<AttractorPage, () => Attractor[]> = {
     classic: createClassicAttractors,
     original: createOriginalAttractors,
     menagerie: createMenagerieAttractors,
+    forge: createForgeAttractors,
 };
 
 export const createInitialAttractors = (page: AttractorPage = DEFAULT_PAGE): Attractor[] =>
     (PAGE_FACTORIES[page] ?? createClassicAttractors)();
 
 export const isAttractorPage = (v: unknown): v is AttractorPage =>
-    v === 'classic' || v === 'original' || v === 'menagerie';
-
-export const readSavedPage = (): AttractorPage => {
-    if (typeof window === 'undefined') return DEFAULT_PAGE;
-    const saved = window.localStorage.getItem(PAGE_STORAGE_KEY);
-    return isAttractorPage(saved) ? saved : DEFAULT_PAGE;
-};
+    v === 'classic' || v === 'original' || v === 'menagerie' || v === 'forge';

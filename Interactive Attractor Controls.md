@@ -70,6 +70,8 @@ This document is the **complete, unedited AI conversation log** for the developm
 | **🧭 Wave 4 — Engine generalisation** | `AttractorType = Classic \| Original \| Menagerie`, `Attractor.center` subtracted before projection, `getDrawStyle()` / `isDiscrete()` replaces hard-coded `'henon'` checks in render loop + worker; `badge` + `note` in tooltip + tour |
 | **🦎 Wave 4 — Page 3: the menagerie** | `menagerieCalculations.ts` — Thicket (IFS), Dendrite (Julia set, inverse iteration), Colony (Langton's ants), Stadium (billiard), Pendulum (double pendulum, RK4), Cluster (N-body), Echo (Mackey–Glass delay), Murmuration (boids), Loom (quasi-periodic), Rebound (bouncing ball). Ten classes of dynamics, not ten more flows |
 | **🧠 Wave 4 — StepContext + hidden state** | Calculators get `{ points, index }`; per-point / per-tile memory in `WeakMap`s keyed by object identity; `DrawStyle { mode, stepInterval }`; `FACE_CAMERA` rotation for flat systems; three-way `Page 1 2 3` toolbar group + `3` key |
+| **🛠️ Wave 4 follow-up — review fixes** | RK4 for the classics; NaN latch, sub-step-major stepping, Tailwind `@config`, joystick; `TheVoid.tsx` split into `src/engine/` + hooks; vet whole-swarm gate (CHANGELOG 1.5.1) |
+| **🔥 Wave 4 follow-up — Page 4: the forge** | `forgeCalculations.ts` — cover / twist / inversion over π-symmetric bases: Trefoil, Starfish, Compass, Lantern, Crown, Conch, Lotus, Triskele, Quatrefoil, Galaxy; λ inherited from the base flow (CHANGELOG 1.6.0) |
 
 ---
 
@@ -1742,3 +1744,39 @@ Agreed that Page 2 is "the classics, remixed". For Page 3 the difference had to 
 **Verification.** lint / tsc / build clean; Playwright: `3` key + toolbar group, `aria-pressed`, localStorage `menagerie`, tour heading, both themes, no page errors. Screenshot-driven tweaks: Stadium's pure white vanished on the light theme (now pale blue), Cluster scale 55 → 35, dust stepInterval 1 → 2.
 
 **Docs.** CHANGELOG `[1.5.0]` retitled "Pages 2 + 3" with a Page 3 section and Notes; ARCHITECTURE (tree, calculators contract, menagerie table, types, roadmap); WALKTHROUGH (Page 3 table, page group row, `1/2/3` shortcut); README (features, shortcuts, Page 3 table, tree); session note gained a Part 2; CLAUDE.md (hidden-state pattern); CHECKPOINT.md refreshed; this log.
+
+---
+
+## Session — 2026-11-14 — Claude Code (CLI): review, fixes, Page 4
+
+### User Input
+
+> Set up Lode; review the upstream branches; fix the bugs; update the README; the joystick does not work.
+
+### Planner Response
+
+Lode was seeded from the thesis repo. The review of the four stacked PRs found that the classic flows were wrong under forward Euler: Rössler and Rabinovich–Fabrikant went periodic, and Halvorsen was chaotic only because of Euler error. Classics moved to RK4, and RF, Halvorsen and Ossuary were retuned.
+
+Other fixes:
+- The NaN latch: the guard now runs before the step.
+- Point-major stepping, which pumped energy into Cluster: stepping is now sub-step-major.
+- The Tailwind 4 config, which had never loaded.
+- The dead joystick: pointer events, and the needle now updates.
+
+`TheVoid.tsx` went from 826 to 334 lines by splitting out `src/engine/` and four hooks. The vet script gained a whole-swarm gate. Details are in CHANGELOG 1.5.1.
+
+### User Input
+
+> Add a page 4. They look too similar to page 1 and 2, invent something please.
+
+### Planner Response
+
+A first draft of ten literature flows was dropped. Page 4 instead rebuilds proven chaotic flows with smooth coordinate operators: n-fold covers, twists and spherical inversion. A conjugacy keeps the Lyapunov spectrum, so each λ matches its base, and the vet checks every Jacobian. Ten systems were picked from offline renders: Trefoil, Starfish, Compass, Lantern, Crown, Conch, Lotus, Triskele, Quatrefoil and Galaxy. Design notes are in `docs/sessions/2026-11-14-review-fixes-and-forge.md`.
+
+### User Input
+
+> Merge everything, get main into a steady state, then open a docs-only PR with more ideas.
+
+### Planner Response
+
+The tap-to-control commit `75aba4e` was reverted on Wave 1, because the hover panel stays. Waves 1 to 4 were merged in order with merge commits, `main` was verified, and an ideas PR was opened.

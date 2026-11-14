@@ -1,6 +1,20 @@
-# CHECKPOINT — 2026-09-01
+# CHECKPOINT — 2026-11-14
 
 Session checkpoint. See `CLAUDE.md` for persistent conventions and `docs/sessions/` for per-session notes.
+
+---
+
+## In progress (uncommitted) — 2026-11-14 follow-up on Wave 4
+
+Same branch, on top of `e7cd844`. Nothing is committed yet; the planned split is two commits: (1) the fixes and engine split (CHANGELOG 1.5.1), (2) Page 4 plus docs (1.6.0).
+- **1.5.1 fixes**:
+  - RK4 for the classics; Rabinovich–Fabrikant, Halvorsen and Ossuary retuned;
+  - NaN latch, sub-step-major stepping, Tailwind `@config`, joystick;
+  - `TheVoid.tsx` split into `src/engine/` and hooks;
+  - vet swarm gate.
+- **1.6.0 Page 4 — the forge**: `forgeCalculations.ts` (cover / twist / inversion over π-symmetric bases), ten systems, key `4`, `badge: 'forge'`, and `forge` added to the vet gate. Notes are in `docs/sessions/2026-11-14-review-fixes-and-forge.md`.
+- **Lode** (`lode/`, `claude/lode*`, `prompts/SystemPrompt.txt`) was added this session; it is also uncommitted.
+- **Open**: what to do with the user's commit `75aba4e` (on the Wave 1 branch only, not in waves 2–4). Commit `9df1d12` carries a Co-Authored-By trailer.
 
 ---
 
@@ -38,10 +52,10 @@ Branch: `claude/wave-4-page-2-original-attractors`, cut from the Wave 3 tip (`b4
 
 ## Open issues
 
-1. **Euler side-finding on Page 1.** `npm run vet:attractors -- classic` shows Rössler (dt 0.02) and Rabinovich–Fabrikant (dt 0.01) with largest exponent ≈ 0 — periodic under the app's integrator. Not touched in Wave 4. Fix candidates: lower default dt for those two, or an RK2/RK4 path.
+1. ~~Euler side-finding on Page 1.~~ Resolved in 1.5.1: classics integrate with RK4; see CHANGELOG.
 2. **Web Worker still gated off** (`USE_WORKER = false`) and not re-inited on page switch. Deferred with the draw-pipeline swap.
 3. **Novelty not certified.** The ten Page 2 originals were designed from mechanism up and vetted numerically; no literature search was run. Page 3 does not claim novelty of mechanism at all (textbook classes; the IFS maps and parameter sets are this project's). Blurbs, tour notes and the session file say so.
-4. **`useAttractorSimulation` / `useAnimationFrame` extraction** still deferred (touch it together with the worker swap).
+4. ~~`TheVoid` extraction~~ Done in 1.5.1 (`src/engine/*`, roster/recorder/shortcut hooks). `useAnimationFrame` is still unused by the frame loop.
 5. **Page 3 + worker.** The flat-buffer worker protocol carries no `StepContext`, so Page 3 cannot run in the worker as-is. Irrelevant while `USE_WORKER = false`; part of the worker follow-up.
 6. **Page 3 perf on weak GPUs.** Three dust tiles stamp 10 glowing dots per point per frame; Cluster and Murmuration are O(N²) per sub-step. Fine at N = 10; at N = 50 on all three interacting tiles, Perf → Low is the escape hatch. Not measured on real hardware (headless is software-rendered).
 

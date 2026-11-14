@@ -31,6 +31,8 @@ const attractorsToInitPayload = (attractors: Attractor[]) =>
         return {
             type: a.type,
             params: { ...a.params },
+            integrator: a.integrator,
+            home: a.home,
             pointCount: a.points.length,
             points: pts,
         };

@@ -74,6 +74,25 @@ Press `3` (or the **3** in the toolbar's Page group). Nothing on this page is a 
 
 Three of these (Cluster, Murmuration, Colony) are *interacting* systems — the point count slider changes the physics, not just the density. The Lyapunov line in their cards is descriptive rather than a number, because a single exponent is not the right summary for a stochastic, conservative or quasi-periodic system.
 
+
+### Page 4 — the forge
+
+Press `4`. Every tile here is a known chaotic flow rebuilt by a smooth change of coordinates, so the chaos is the same and the body is new. The Lyapunov exponent on each card matches the base flow's.
+
+| Tile | Built from | What to look for |
+|------|-----------|-----------------|
+| **Trefoil** | Lorenz, 3-fold cover | The butterfly's two wings become three petals; the orbit switches between three lobes |
+| **Starfish** | Lorenz, 5-fold cover | Five thin arms around a tall spine |
+| **Compass** | Burke–Shaw, 8-fold cover | An eight-point rose; the orbit jumps between points through the hub |
+| **Lantern** | Chen–Lee, spherical inversion | Seen side-on: a stacked pagoda hanging inside a ring |
+| **Crown** | Rucklidge, 4-fold cover | Four spires around a ring |
+| **Conch** | Lorenz, inversion beside one wing | One wing balloons into a shell; the other coils into a ribbon at its mouth |
+| **Lotus** | Shimizu–Morioka, 6-fold cover | Slow, weak chaos; petals fill in gradually and stay crisp |
+| **Triskele** | Four-Wing, 3-fold cover | Six wings as three interlocked pairs |
+| **Quatrefoil** | Chen–Lee, 4-fold cover | Broad petals with a deep throat |
+| **Galaxy** | Rucklidge, 3-fold cover + twist | Petals sheared into spiral arms |
+
+Covers are drawn top-down so the symmetry reads at a glance. Drag the joystick to tip them over and see their height.
 ---
 
 ## Per-Tile Controls
@@ -137,7 +156,7 @@ The fixed toolbar at the bottom center of the screen exposes whole-app actions:
 | ⏸ / ▶ | **Pause / Resume** the entire simulation |
 | ↺ | **Reset All** — flush every tile's trails |
 | 🎲 All | **Randomize All** — randomize every attractor at once |
-| Page 1 2 3 | **Page group** — classics / originals / menagerie (swapping clears trails and resets tile controls; persisted to `localStorage`) |
+| Page 1 2 3 4 | **Page group** — classics / originals / menagerie / forge (swapping clears trails and resets tile controls; persisted to `localStorage`) |
 | Palette ▾ | **Palette preset** — apply Original, Neon, Pastel, Mono, Warm, or Cold across all 10 attractors |
 | Perf ▾ | **Performance mode** — Low / Med / High, adjusting render sub-steps and glow (persisted to `localStorage`) |
 | PNG | **Snapshot** — save the current canvas as a timestamped PNG |
@@ -165,7 +184,7 @@ Clicks inside the toolbar are excluded from the canvas "merge" handler, so press
 | `V` | Start / stop WebM recording (auto-stops at 60 s) |
 | `N` | Open / close the narrative tour |
 | `M` | Mute / unmute the generative audio synth |
-| `1` / `2` / `3` | Page 1 classics / Page 2 originals / Page 3 menagerie — Ctrl/Cmd/Alt combinations pass through to the browser |
+| `1` / `2` / `3` / `4` | Page 1 classics / 2 originals / 3 menagerie / 4 forge — Ctrl/Cmd/Alt combinations pass through to the browser |
 | `+` / `-` | Add / remove a point on the last-focused tile |
 | `← ↑ → ↓` | Rotate the last-focused tile's joystick (tour nav takes priority while the tour is open) |
 

@@ -1,15 +1,16 @@
 /// <reference lib="webworker" />
-import type { AttractorParams, AttractorType } from '../components/types';
+import type { AttractorParams, AttractorType, Integrator, Vec3 } from '../components/types';
 import {
+    advancePoint,
     calculateAttractorStep,
     getDrawStyle,
-    isPointStable,
-    resetPoint,
 } from '../components/attractors/attractorCalculations';
 
 interface AttractorSnapshot {
     type: AttractorType;
     params: AttractorParams;
+    integrator?: Integrator;
+    home?: Vec3;
     pointCount: number;
     /** flat [x, y, z, ...] — length = pointCount * 3 */
     points: Float32Array;
@@ -22,6 +23,8 @@ interface InitMessage {
     attractors: Array<{
         type: AttractorType;
         params: AttractorParams;
+        integrator?: Integrator;
+        home?: Vec3;
         pointCount: number;
         points: Float32Array;
     }>;
@@ -86,11 +89,7 @@ const runStep = () => {
                         calculateAttractorStep(attr.type, pt, attr.params);
                     }
                 } else {
-                    const delta = calculateAttractorStep(attr.type, pt, attr.params);
-                    if (!isPointStable(pt)) resetPoint(pt);
-                    pt.x += delta.dx;
-                    pt.y += delta.dy;
-                    pt.z += delta.dz;
+                    advancePoint(attr, pt);
                 }
                 const bi = (p * subSteps + s) * 3;
                 buf[bi] = pt.x;
@@ -119,6 +118,8 @@ workerSelf.onmessage = (e: MessageEvent<IncomingMessage>) => {
             attractors = msg.attractors.map((a) => ({
                 type: a.type,
                 params: { ...a.params },
+                integrator: a.integrator,
+                home: a.home,
                 pointCount: a.pointCount,
                 points: new Float32Array(a.points),
             }));

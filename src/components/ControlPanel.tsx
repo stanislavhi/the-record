@@ -9,6 +9,7 @@ interface ControlPanelProps {
     pointCount: number;
     scale: number;
     speed: number;
+    speedAdjustable: boolean;
     onColorChange: (hex: string) => void;
     onPointsChange: (delta: number) => void;
     onScaleChange: (value: number) => void;
@@ -24,6 +25,7 @@ const ControlPanel = memo((props: ControlPanelProps) => {
         pointCount,
         scale,
         speed,
+        speedAdjustable,
         onColorChange,
         onPointsChange,
         onScaleChange,
@@ -65,7 +67,7 @@ const ControlPanel = memo((props: ControlPanelProps) => {
                 <label className="flex flex-col gap-1 mb-2">
                     <div className="flex justify-between text-label text-gray-500 font-mono">
                         <span>SPEED</span>
-                        <span>{speed.toFixed(3)}</span>
+                        <span>{speedAdjustable ? speed.toFixed(3) : 'map'}</span>
                     </div>
                     <input
                         type="range"
@@ -73,9 +75,11 @@ const ControlPanel = memo((props: ControlPanelProps) => {
                         min={SPEED_LIMITS.min}
                         max={SPEED_LIMITS.max}
                         step={SPEED_LIMITS.step}
-                        value={speed}
+                        value={speedAdjustable ? speed : SPEED_LIMITS.min}
+                        disabled={!speedAdjustable}
+                        title={speedAdjustable ? undefined : 'Iterated map: advances one step per tick, no dt'}
                         onChange={(e) => onSpeedChange(parseFloat(e.target.value))}
-                        className="w-full h-1 bg-gray-800 rounded-lg cursor-pointer"
+                        className="w-full h-1 bg-gray-800 rounded-lg cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                     />
                 </label>
 

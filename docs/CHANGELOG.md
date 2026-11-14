@@ -8,6 +8,45 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
+## [1.6.0] — 2026-11-14 — Page 4: the forge
+
+### Added
+- **Page 4 — the forge.** Ten flows built from known chaotic systems by smooth coordinate operators (`src/components/attractors/forgeCalculations.ts`):
+  - **n-fold cover** ξ = ζ^(2/n) (Letellier–Gilmore): **Trefoil** (Lorenz ×3), **Starfish** (Lorenz ×5), **Compass** (Burke–Shaw ×8), **Crown** (Rucklidge ×4), **Lotus** (Shimizu–Morioka ×6), **Triskele** (Four-Wing ×3), **Quatrefoil** (Chen–Lee ×4).
+  - **spherical inversion**: **Lantern** (Chen–Lee about (0, 0, −2), R = 10, side-on) and **Conch** (Lorenz about a point beside one wing).
+  - **stacked operators**: **Galaxy** (Rucklidge ×3 cover, then twisted by 0.3·z).
+- The operators are diffeomorphisms, so each λ equals its base's λ (vet: Lorenz-based 0.90–0.91, Burke–Shaw 0.70, Rucklidge 0.20, Chen–Lee 0.13–0.14). All run on RK4 and pass the chaotic gate and the swarm check.
+- Key `4`, a fourth toolbar page button, `PAGE 4: FORGE` phase, `badge: 'forge'` with a provenance note on every info card.
+- `liftToCover()` seeds covers off the singular z-axis. Every forge entry sets `home` to its seed.
+
+### Changed
+- Vet gate: `all` now includes `forge`. Page 4 must be `chaotic` like Pages 1 and 2.
+
+### Notes
+- A first draft of Page 4 shipped ten more literature flows (Thomas, Chen, Arneodo, …). It was replaced before commit because those looked too much like Pages 1 and 2.
+- Novelty is not certified. Covers and inversions are known techniques; these particular base/operator/parameter choices were picked by screening renders, not from a literature search.
+
+---
+
+## [1.5.1] — 2026-11-14 — Integrator, swarm stability, engine split
+
+### Fixed
+- **Page 1 dynamics match the literature.** Classic continuous flows integrate with RK4 (`integrator: 'rk4'`); under forward Euler Rössler and Rabinovich–Fabrikant collapsed onto periodic orbits (LE ≈ 0). Rössler now measures 0.070 (textbook 0.071), Lorenz 0.910 (0.906). Page 2 stays on Euler — it was tuned and vetted under it.
+- **Rabinovich–Fabrikant** moved to the canonical chaotic regime α = 1.1, γ = 0.87 (LE ≈ 0.20). Its basin is small, so the swarm starts at (−1, 0, 0.5) with 0.005 spacing and resets to a matching `home`.
+- **Halvorsen** a = 1.89 → 1.4 (textbook). 1.89 was only chaotic because of Euler error; under RK4 it is periodic. LE ≈ 0.69.
+- **Ossuary** k = 2 → 1. At k = 2 it measured LE 0.002 ("weak") and slipped through the vet gate; now 0.14.
+- **Cluster / Murmuration / Colony** — the render loop stepped point-major (all sub-steps of point 0, then point 1), while interacting calculators assume every body advances once per sub-step. Bodies integrated against a frozen swarm, Cluster pumped energy and ejected bodies to r ≈ 1400 (~330 resets per 3000 frames). Stepping is now sub-step-major.
+- **NaN latch** — the stability guard ran after the delta was computed and before it was added, so a NaN point was reset and immediately re-poisoned forever. `advancePoint()` checks first and spends the sub-step on the reset; strokes lift the pen across a reset instead of drawing a line to `home`.
+- **Tailwind 4 never loaded `tailwind.config.js`** (v3 `@tailwind` directives) — every custom class (`z-toolbar`, `z-modal`, `text-label`, `text-ink-high`, …) and theme-dependent utilities (`bottom-16`, `inset-x-0`) were missing from the CSS. Now `@import "tailwindcss"` + `@config`.
+- **Joystick unusable** — the tile is `pointer-events: none` and the joystick inherited it, so hovering it dropped the tile's `:hover` (panel faded) and drags fell through to the canvas. The reveal container is now `pointer-events-auto`. The needle also never moved: rotation now patches the overlay snapshot.
+- `four_wing` default dt 0.04 sat above the SPEED slider max (0.03); now 0.03. SPEED is disabled for dt-free systems (maps, chaos game). Randomize picks dt within 0.5×–1.5× of the current value instead of a global 0.001–0.03 (which could push Dadras 15× past its vetted step).
+
+### Changed
+- **`TheVoid.tsx` 826 → 334 lines.** Engine pieces moved to `src/engine/` (`trailGrid.ts` — flat `Float32Array` buffer, `particleField.ts`, `drawAttractors.ts`, `layout.ts`); state to hooks (`useAttractorRoster`, `useCanvasRecorder`, `usePersistentState`, `useAppShortcuts`). The worker and vet script share `advancePoint()` with the render loop.
+- **Vet gate** — classics and originals must be `chaotic` (`weak` now fails); new whole-swarm column steps all ten points in render-loop order on every page and fails on any reset.
+
+---
+
 ## [1.5.0] — 2026-09-01 — Wave 4: Pages 2 + 3 — ten originals, then a menagerie
 
 Ships on `claude/wave-4-page-2-original-attractors` (branched off Wave 3). Adds two more rosters of ten and a three-way page control: **Page 2** is ten chaotic flows invented for this project; **Page 3** is ten *different classes* of dynamics — fractal, map, automaton, billiard, Hamiltonian, N-body, delay, agents, quasi-periodic, impact — pushed through the same tile pipeline.

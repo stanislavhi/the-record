@@ -1,8 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100..800&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4: the JS config is not auto-loaded, @config opts back into it
+   (theme colours, font sizes, z-index scale used throughout the overlay). */
+@import "tailwindcss";
+@config "../tailwind.config.js";
 
 :root,
 :root[data-theme="dark"] {

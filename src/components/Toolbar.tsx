@@ -108,7 +108,7 @@ const Toolbar = memo((props: ToolbarProps) => {
                     aria-label="Attractor page"
                     className="flex items-center gap-1 px-2 py-1 text-label uppercase tracking-widest font-mono rounded border bg-black/30 border-border"
                     style={{ backdropFilter: 'blur(6px)' }}
-                    title="Page 1 classics · Page 2 originals · Page 3 menagerie (keys 1 / 2 / 3)"
+                    title="Page 1 classics · Page 2 originals · Page 3 menagerie · Page 4 forge (keys 1–4)"
                 >
                     <span className="text-ink-high/70">Page</span>
                     {ATTRACTOR_PAGES.map((p) => (

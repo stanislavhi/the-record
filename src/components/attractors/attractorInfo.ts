@@ -7,15 +7,16 @@ export interface AttractorInfo {
     equations: string[];
     lyapunov: string;
     blurb: string;
-    /** Short chip shown next to the credit line (Page 2: "original", Page 3: "menagerie"). */
+    /** Short chip shown next to the credit line (Page 2: "original", Page 3: "menagerie", Page 4: "forge"). */
     badge?: string;
     /** One-line provenance note shown on the tour card. */
     note?: string;
 }
 
-/** Credit line shared by every Page 2 / Page 3 system. */
+/** Credit line shared by every Page 2 / 3 / 4 system. */
 export const ORIGINAL_CREDIT = 'Claude · for The Record';
 const ORIGINAL_NOTE = 'Page 2 original — invented for this project, not from the literature';
+const FORGE_NOTE = 'Page 4 forge — a known flow reshaped by a smooth change of coordinates; same chaos, new body';
 const MENAGERIE_NOTE = 'Page 3 menagerie — a different class of dynamics, not a strange-attractor flow';
 
 export const ATTRACTOR_INFO: Record<AttractorType, AttractorInfo> = {
@@ -99,7 +100,7 @@ export const ATTRACTOR_INFO: Record<AttractorType, AttractorInfo> = {
             'dy/dt = x(3z + 1 − x²) + γy',
             'dz/dt = −2z(α + xy)',
         ],
-        lyapunov: '≈ 0.14',
+        lyapunov: '≈ 0.20',
         blurb: 'A model of wave propagation in nonequilibrium media. Extremely sensitive to parameters.',
     },
     halvorsen: {
@@ -111,7 +112,7 @@ export const ATTRACTOR_INFO: Record<AttractorType, AttractorInfo> = {
             'dy/dt = −ay − 4z − 4x − z²',
             'dz/dt = −az − 4x − 4y − x²',
         ],
-        lyapunov: '≈ 0.79',
+        lyapunov: '≈ 0.69',
         blurb: 'Cyclic symmetry — the same equation rotated through x, y, z. Elegant and ribbon-like.',
     },
     dadras: {
@@ -235,7 +236,7 @@ export const ATTRACTOR_INFO: Record<AttractorType, AttractorInfo> = {
             'dy/dt = −x − yz + k·sin(wx)',
             'dz/dt = y² − a',
         ],
-        lyapunov: '≈ 0.10',
+        lyapunov: '≈ 0.14',
         blurb: 'A Nosé–Hoover thermostat rattled by a sin(wx) forcing. Layered shells — bone-like rings stacked around a hollow core.',
         badge: 'original',
         note: ORIGINAL_NOTE,
@@ -426,6 +427,150 @@ export const ATTRACTOR_INFO: Record<AttractorType, AttractorInfo> = {
         blurb: 'A ball on a vibrating plate. Smooth falling, instantaneous kicks. Drawn around a cylinder of drive phase so the bounces stack into a ragged band instead of a seam.',
         badge: 'menagerie',
         note: MENAGERIE_NOTE,
+    },
+
+    // ── Page 4 — the forge ──────────────────────────────────────────────
+    // Lyapunov values measured with scripts/vet-attractors.mjs (RK4, default dt).
+    // They match the base flow's exponent: the operators are diffeomorphisms.
+    trefoil: {
+        name: 'Trefoil',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Lorenz (σ=10, ρ=28, β=8/3) in ζ = x + iy',
+            '3-fold cover: ξ = ζ^(2/3)',
+            'ξ̇ = (2/3)·ξ^(−1/2)·ζ̇,  ż = Lorenz ż',
+        ],
+        lyapunov: '≈ 0.91',
+        blurb: 'The Lorenz butterfly wrapped three times around its axis. Each wing becomes one and a half petals, so the orbit switches between three lobes instead of two.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    starfish: {
+        name: 'Starfish',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Lorenz (σ=10, ρ=28, β=8/3)',
+            '5-fold cover: ξ = ζ^(2/5)',
+            'ξ̇ = (2/5)·ξ^(−3/2)·ζ̇',
+        ],
+        lyapunov: '≈ 0.91',
+        blurb: 'Five arms around a tall spine. The same butterfly as Trefoil, folded tighter: the petals thin out and the z excursion dominates.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    compass: {
+        name: 'Compass',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Burke–Shaw (s=10, v=4.272)',
+            '8-fold cover: ξ = ζ^(1/4)',
+            'ξ̇ = (1/4)·ξ^(−3)·ζ̇',
+        ],
+        lyapunov: '≈ 0.70',
+        blurb: 'Burke–Shaw folded eight times. Its two scrolls become a compass rose; the orbit jumps between points of the rose through the hub.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    lantern: {
+        name: 'Lantern',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Chen–Lee (a=5, b=−10, c=−0.38)',
+            'spherical inversion: p ↦ c + R²(p − c)/|p − c|²',
+            'c = (0, 0, −2), R = 10',
+        ],
+        lyapunov: '≈ 0.15',
+        blurb: 'Chen–Lee seen through a spherical mirror. The far reaches of the orbit fold in to a stacked pagoda; the near passes swing out into the ring that hangs it.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    crown: {
+        name: 'Crown',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Rucklidge (κ=2, λ=6.7)',
+            '4-fold cover: ξ = ζ^(1/2)',
+            'ξ̇ = (1/2)·ξ^(−1)·ζ̇',
+        ],
+        lyapunov: '≈ 0.20',
+        blurb: 'Rucklidge convection folded four ways. Its two loops become four spires standing around a ring.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    conch: {
+        name: 'Conch',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Lorenz (σ=10, ρ=28, β=8/3)',
+            'spherical inversion: p ↦ c + R²(p − c)/|p − c|²',
+            'c = (15, 0, 25), R = 15 — beside one wing',
+        ],
+        lyapunov: '≈ 0.90',
+        blurb: 'Lorenz inverted about a point next to one of its wings. The near wing balloons into a shell; the far one shrinks into the ribbon coiled at its mouth.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    lotus: {
+        name: 'Lotus',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Shimizu–Morioka (a=0.75, b=0.45)',
+            '6-fold cover: ξ = ζ^(1/3)',
+            'ξ̇ = (1/3)·ξ^(−2)·ζ̇',
+        ],
+        lyapunov: '≈ 0.06',
+        blurb: 'Shimizu–Morioka folded six times. A slow, weakly chaotic flow, so the petals fill in gradually and stay crisp.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    triskele: {
+        name: 'Triskele',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Four-Wing (a=0.2, b=0.01, c=−0.4)',
+            '3-fold cover: ξ = ζ^(2/3)',
+            'ξ̇ = (2/3)·ξ^(−1/2)·ζ̇',
+        ],
+        lyapunov: '≈ 0.07',
+        blurb: 'The four-wing system wrapped three times. Four wings become six, arranged as three interlocked pairs.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    quatrefoil: {
+        name: 'Quatrefoil',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Chen–Lee (a=5, b=−10, c=−0.38)',
+            '4-fold cover: ξ = ζ^(1/2)',
+            'ξ̇ = (1/2)·ξ^(−1)·ζ̇',
+        ],
+        lyapunov: '≈ 0.13',
+        blurb: 'Chen–Lee rigid-body chaos folded four ways. Broad petals with a deep throat where the orbit climbs before switching.',
+        badge: 'forge',
+        note: FORGE_NOTE,
+    },
+    galaxy: {
+        name: 'Galaxy',
+        discoverer: ORIGINAL_CREDIT,
+        year: 2026,
+        equations: [
+            'base: Rucklidge (κ=2, λ=6.7)',
+            '3-fold cover, then twist by k·z, k = 0.3',
+            'ξ̇ = (2/3)·ξ^(−1/2)·ζ̇, rotated by kz',
+        ],
+        lyapunov: '≈ 0.20',
+        blurb: 'Two operators stacked on Rucklidge: a 3-fold cover, then a twist that turns the plane with height. Seen from above, the petals shear into spiral arms.',
+        badge: 'forge',
+        note: FORGE_NOTE,
     },
 };
 
