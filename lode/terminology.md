@@ -1,0 +1,38 @@
+# Terminology
+
+- The Record - the project; also the metaphor for the persistent trail buffer.
+- The Void - `TheVoid.tsx`, the composition root (canvas, frame loop, app-level UI state).
+- Page - one roster of ten: `classic` (Page 1), `original` (Page 2), `menagerie` (Page 3), `forge` (Page 4). `AttractorPage`.
+- Cover / twist / inversion - the Page 4 coordinate operators; a cover maps two lobes to n petals, needs a pi-symmetric base.
+- Conjugacy - a smooth coordinate change preserves the Lyapunov spectrum; Page 4 LE must equal its base's.
+- Roster - the live `Attractor[]` for the active page, held in a ref by `useAttractorRoster`; replaced wholesale on page change.
+- Attractor - one system instance: `type`, `points`, `params`, `scale`, `offset`, `rect`, optional `rotation`, `center`, `integrator`, `home`.
+- Swarm / point - the `Point3D`s integrated per attractor (default 10, range 1-50), each hue-shifted from the attractor colour.
+- Calculator - `(pt, params, ctx?) => {dx,dy,dz}`; flows return derivative * dt; maps and hidden-state systems mutate `pt` and return zero.
+- Flow / map / hidden-state system - the three calculator shapes (continuous ODE; recurrence; Page 3 state kept in WeakMaps).
+- StepContext - `{ points, index }` passed to calculators so interacting systems see their neighbours.
+- Interacting system - calculator that reads other points: Cluster (N-body), Murmuration (boids), Colony (shared ant lattice).
+- advancePoint - the single continuous-flow step (guard, then Euler or RK4); shared by render loop, worker and vet script.
+- Integrator - `'euler'` (default; originals) or `'rk4'` (classic flows). Per-attractor field.
+- Home - basin point a diverged point is reset to; default (0.1, 0.1, 0.1).
+- Center - attractor-space point subtracted before projection so off-origin orbits sit mid-tile.
+- Sub-step - one of `PERF_PRESETS[mode].subSteps` steps per frame (low 1, med 20, high 40).
+- Sub-step-major - stepping order where every point advances once per sub-step before any advances again.
+- DrawStyle - `{ mode: 'trail' | 'dots', stepInterval }` from `getDrawStyle(type)`.
+- Dots / dust - systems stamped as squares instead of stroked (Hénon, Ripple, Thicket, Dendrite, Colony).
+- Tile / rect - the screen rectangle for one attractor; strokes are clipped to it.
+- Offset - tile centre minus canvas centre, added in `project()`.
+- FACE_CAMERA - object rotation that cancels the isometric camera so flat systems face the viewer.
+- TrailGrid - persistent intensity buffer, one cell per 2 px, decays x0.9995 per frame.
+- Deposit - adding intensity to a trail cell (capped at 1).
+- Flush - clearing the trail cells under one tile.
+- ParticleField - merge burst + pointer ink particles + the energy budget.
+- Energy - 0-100; pointer ink costs 0.5, regenerates 0.1/frame, blocked below 5. Shown in StatsHUD.
+- Merge - first click outside toolbar/audio panel: leaves intro, 150-particle burst, starts the synth.
+- Phase - StatsHUD status line ("AWAITING MERGE", "PHASE 10: ACTIVE", "PAGE 2: ORIGINALS", "PAGE 3: MENAGERIE", "PAGE 4: FORGE").
+- Perf mode - low/med/high preset of sub-steps and glow; persisted.
+- Vet / vetting - `npm run vet:attractors`: per-system Lyapunov exponent, bounds, swarm stability.
+- LE - largest Lyapunov exponent (Benettin renormalisation, per unit time).
+- Verdict - vet label: `chaotic` (LE > 0.02), `weak` (0 < LE <= 0.02), `not chaotic`, `n/a`, `UNSTABLE`, `SWARM UNSTABLE`.
+- Overlay item - React snapshot of a tile (`OverlayItem`) used to render controls; includes `speedAdjustable`.
+- Tour - modal walkthrough of the active page's ten systems with a tile spotlight.

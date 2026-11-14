@@ -1,0 +1,6 @@
+# Lode session-scrap directory.
+# Per Lode framework: contents of this directory are git-ignored.
+# This .gitignore itself IS tracked (so the directory is preserved).
+
+*
+!.gitignore
