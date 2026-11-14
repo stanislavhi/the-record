@@ -2,23 +2,22 @@
 
 Nothing here is decided. Items are code-observed gaps awaiting a human call.
 
+Full prioritised backlog: [`docs/IDEAS.md`](../../docs/IDEAS.md) (waves 5-8, nothing implemented). Below are the code-observed gaps it builds on.
+
 ```mermaid
 flowchart TD
-    Branch[Branch hygiene] --> Commit75[75aba4e on PR #1 not in waves 2-4]
-    Branch --> Stack[PRs #1-#4 stacked, all target main]
-    Branch --> CoAuthor[co-author trailer in 9df1d12]
-    Visual[Visual] --> Small[classic tiles render small at 1600px]
-    Visual --> Light[white Lorenz invisible on light theme]
-    Engine[Engine] --> Worker[worker gated off, no StepContext, no page re-init]
+    Visual[Visual] --> Small[classic tiles small at 1600px]
+    Visual --> Light[pale colours invisible on light theme]
+    Engine[Engine] --> Worker[worker gated off: finish or delete]
     Engine --> GridPerf[grid paint is the frame-time ceiling]
     Engine --> DPR[canvas not DPR-aware]
-    Engine --> Bleed[grid deposits not clipped to tile]
+    Engine --> Bleed[trails not clipped to tile]
+    Process[Process] --> CI[no CI, no unit tests]
 ```
 
-## Branch hygiene
-- Commit `75aba4e` (control panels with toggled state, intro merge flow) exists only on PR #1's branch and touches files Waves 2-4 rewrote. Cherry-pick or drop.
-- PRs #1-#4 are stacked but all target `main`; merging #4 merges everything. Close #1-#3 after, or retarget.
-- `9df1d12` carries a `Co-Authored-By` trailer (repo convention: none). Removing it rewrites history.
+## Branch state
+- Waves 1-4 are merged to `main` (merge commits). `75aba4e` (tap-to-control) was reverted on Wave 1; touch-only reintroduction is IDEAS B1.
+- `9df1d12` still carries a `Co-Authored-By` trailer in `main` history; removing it would mean rewriting `main`, so it stays.
 
 ## Visual
 - Classic attractors occupy a small fraction of their tiles at 1600x900 (scale values predate the responsive grid). Consider per-tile auto-fit from vet extent.
@@ -30,6 +29,9 @@ flowchart TD
 - Canvas not DPR-scaled (blurry on HiDPI).
 - Trail deposits are not clipped to the tile; oversized systems bleed into neighbours.
 - SPEED slider shares one range (0.001-0.03) across systems vetted at very different dt; Euler originals pushed to 0.03 may diverge (now reset cleanly, but look wrong).
+
+## Process
+- No CI and no unit tests; gates run by hand (IDEAS A1, A2).
 
 ## Docs
 - `AGENTS.md` still describes the pre-refactor single-component architecture and `@tailwindcss/vite`.

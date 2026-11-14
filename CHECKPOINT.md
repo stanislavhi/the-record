@@ -4,21 +4,26 @@ Session checkpoint. See `CLAUDE.md` for persistent conventions and `docs/session
 
 ---
 
-## In progress (uncommitted) — 2026-11-14 follow-up on Wave 4
+## State at 2026-11-14 — `main` steady, Wave 5 is ideas only
 
-Same branch, on top of `e7cd844`. Nothing is committed yet; the planned split is two commits: (1) the fixes and engine split (CHANGELOG 1.5.1), (2) Page 4 plus docs (1.6.0).
-- **1.5.1 fixes**:
-  - RK4 for the classics; Rabinovich–Fabrikant, Halvorsen and Ossuary retuned;
-  - NaN latch, sub-step-major stepping, Tailwind `@config`, joystick;
-  - `TheVoid.tsx` split into `src/engine/` and hooks;
-  - vet swarm gate.
-- **1.6.0 Page 4 — the forge**: `forgeCalculations.ts` (cover / twist / inversion over π-symmetric bases), ten systems, key `4`, `badge: 'forge'`, and `forge` added to the vet gate. Notes are in `docs/sessions/2026-11-14-review-fixes-and-forge.md`.
-- **Lode** (`lode/`, `claude/lode*`, `prompts/SystemPrompt.txt`) was added this session; it is also uncommitted.
-- **Open**: what to do with the user's commit `75aba4e` (on the Wave 1 branch only, not in waves 2–4). Commit `9df1d12` carries a Co-Authored-By trailer.
+- **`main` = Waves 1–4**, merged in order with merge commits:
+  - #1 `ad75c15`, #2 `3e26b8c`, #3 `513e5d8`, #4 `e240f0b`.
+  - A clean checkout passes `npm ci`, tsc, eslint (0 warnings), build and `vet:attractors all`. Its tree is identical to the Wave 4 tip.
+- **Wave 1:** `75aba4e` (tap-to-control) was reverted by `10d3bdf` before merging, so the hover panel stays. Touch-only reintroduction is IDEAS B1.
+- **Wave 4 follow-up commits:**
+  - `51318a2`: Lode knowledge base.
+  - `7065cce`: the 1.5.1 fixes, the engine split, Page 4 forge (1.6.0) and docs.
+- **Branch `claude/wave-5-ideas`** (this branch) is docs only:
+  - `docs/IDEAS.md` backlog with a recommended Wave 5–8 order;
+  - CHANGELOG `[Unreleased]`;
+  - ARCHITECTURE roadmap rows, CLAUDE.md wave row, lode roadmap.
+  - Nothing is implemented.
+- **Known leftover:** `9df1d12` in `main` history carries a Co-Authored-By trailer. Removing it would mean rewriting `main`, so it stays.
 
----
+## Next session
+Start Wave 5 from `docs/IDEAS.md` section A (hygiene) once the user says go. Cut `claude/wave-5-<slug>` from `main`, not from the ideas branch, unless the ideas PR has merged.
 
-## Completed this session — Wave 4
+## Earlier — Wave 4 (original checkpoint)
 
 Branch: `claude/wave-4-page-2-original-attractors`, cut from the Wave 3 tip (`b4f2f66`). Two commits: Page 2 (`9df1d12`), then Page 3.
 

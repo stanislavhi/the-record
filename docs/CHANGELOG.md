@@ -8,6 +8,20 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
+## [Unreleased] — Wave 5: ideas backlog (docs only)
+
+### Added
+- `docs/IDEAS.md`: a prioritised backlog, with costs, benefits and risks for each item. Nothing is implemented. It has four sections:
+  - **Hygiene:** CI, Vitest numerics tests, DPR, auto-fit scale, tile clipping, light-theme colours, per-system dt range, `ImageData` grid paint, AGENTS.md rewrite, worker deletion.
+  - **Experience:** touch controls, focus mode, URL state, divergence demo, a11y.
+  - **Science:** forge playground, bifurcation explorer, Poincaré sections, Page 5 directions, dynamics-driven sound.
+  - **Export:** offline high-res render, seamless loops.
+
+### Notes
+- Waves 1–4 were merged to `main` in order, with merge commits. On Wave 1, the tap-to-control commit `75aba4e` was reverted (`10d3bdf`) so the hover panel stays. Touch support is re-proposed in IDEAS B1 behind `(hover: none)`.
+
+---
+
 ## [1.6.0] — 2026-11-14 — Page 4: the forge
 
 ### Added

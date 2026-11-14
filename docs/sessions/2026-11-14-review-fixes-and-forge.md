@@ -52,3 +52,10 @@ Design + verification note (no plan-mode round). Branch: `claude/wave-4-page-2-o
 | Galaxy | Rucklidge | ×3 + twist | 0.196 |
 
 **Not claimed.** No literature search was run on these specific combinations, and covers and inversions are established techniques. Lotus and Triskele are slow (λ ≈ 0.06) but sit well above the 0.02 gate.
+
+## Part 3 — Merge and ideas
+
+- `75aba4e` was reverted on Wave 1 (`10d3bdf`), not force-removed, so history is untouched and the stacked merges stayed conflict-free.
+- PRs #1 → #4 were merged with merge commits rather than squash, which would have duplicated Wave 1's diff into every later PR.
+- `main` was verified from a clean worktree: ci, tsc, lint, build and vet all exit 0.
+- `docs/IDEAS.md` was opened as a docs-only PR on `claude/wave-5-ideas`.
