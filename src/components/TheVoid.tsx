@@ -21,11 +21,15 @@ import HelpModal from './HelpModal';
 import Toolbar from './Toolbar';
 import IntroOverlay from './IntroOverlay';
 import PausedOverlay from './PausedOverlay';
+import TourModal from './TourModal';
 import { useBreakpoint, getGridCols } from '../hooks/useBreakpoint';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useTheme } from '../hooks/useTheme';
 import { useFPS } from '../hooks/useFPS';
 import { getThemeTokens } from '../utils/themeTokens';
+import { PALETTES, type PaletteName } from '../utils/palettes';
+import { randomizeAttractor } from '../utils/randomParams';
+import { snapshotPNG, CanvasRecorder, downloadBlob } from '../utils/exportCanvas';
 
 const buildOverlayItems = (attractors: Attractor[]): OverlayItem[] =>
     attractors
@@ -56,6 +60,7 @@ const TheVoid = () => {
     const animationRef = useRef<number>(0);
     const colsRef = useRef(0);
     const rowsRef = useRef(0);
+    const recorderRef = useRef<CanvasRecorder | null>(null);
 
     const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([]);
     const [speeds, setSpeeds] = useState<number[]>(() =>
@@ -67,6 +72,10 @@ const TheVoid = () => {
     const [helpOpen, setHelpOpen] = useState(false);
     const [phase, setPhase] = useState('AWAITING MERGE');
     const [energyState, setEnergyState] = useState(100);
+    const [palette, setPalette] = useState<PaletteName>('original');
+    const [recording, setRecording] = useState(false);
+    const [tourOpen, setTourOpen] = useState(false);
+    const [tourIndex, setTourIndex] = useState(0);
 
     const { theme, toggleTheme } = useTheme();
     const breakpoint = useBreakpoint();
@@ -79,6 +88,11 @@ const TheVoid = () => {
     const totalPoints = useMemo(
         () => overlayItems.reduce((sum, it) => sum + it.pointCount, 0),
         [overlayItems]
+    );
+
+    const tourTypes = useMemo(
+        () => initialAttractors.map((a) => a.type),
+        [initialAttractors]
     );
 
     const syncOverlay = useCallback(() => {
@@ -177,7 +191,7 @@ const TheVoid = () => {
             tickFPS();
             const tokens = getThemeTokens(themeRef.current);
 
-            ctx.fillStyle = `rgba(${themeRef.current === 'dark' ? '10, 10, 10' : '245, 245, 245'}, ${tokens.fadeAlpha})`;
+            ctx.fillStyle = `rgba(${tokens.voidRGB}, ${tokens.fadeAlpha})`;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (isIntroRef.current) {
@@ -197,7 +211,7 @@ const TheVoid = () => {
 
             attractors.current.forEach((attractor) => {
                 if (attractor.rect) {
-                    ctx.strokeStyle = CANVAS_STYLE.rectStroke;
+                    ctx.strokeStyle = tokens.rectStroke;
                     ctx.lineWidth = 1;
                     ctx.strokeRect(attractor.rect.x, attractor.rect.y, attractor.rect.w, attractor.rect.h);
                     ctx.save();
@@ -440,6 +454,88 @@ const TheVoid = () => {
         particles.current = [];
     }, []);
 
+    const applyColorToAttractor = useCallback((index: number, rgb: RGB) => {
+        const attr = attractors.current[index];
+        attr.color = rgb;
+        const [h, s, l] = rgbToHsl(rgb.r, rgb.g, rgb.b);
+        attr.points.forEach((pt, i) => {
+            pt.color = hslToRgb((h + i * 0.02) % 1, s, l);
+        });
+    }, []);
+
+    const handleRandomize = useCallback((index: number) => {
+        const attr = attractors.current[index];
+        const next = randomizeAttractor(attr);
+        attr.rotation = next.rotation;
+        attr.scale = next.scale;
+        attr.params.dt = next.speed;
+        applyColorToAttractor(index, next.color);
+        setSpeeds((prev) => {
+            const out = [...prev];
+            out[index] = next.speed;
+            return out;
+        });
+        setOverlayItems((prev) =>
+            prev.map((it) =>
+                it.index === index
+                    ? { ...it, rotation: next.rotation, scale: next.scale, color: next.color }
+                    : it
+            )
+        );
+    }, [applyColorToAttractor]);
+
+    const handleRandomizeAll = useCallback(() => {
+        for (let i = 0; i < attractors.current.length; i++) handleRandomize(i);
+    }, [handleRandomize]);
+
+    const handlePaletteChange = useCallback((next: PaletteName) => {
+        setPalette(next);
+        const colors = PALETTES[next];
+        attractors.current.forEach((_, i) => {
+            applyColorToAttractor(i, colors[i % colors.length]);
+        });
+        setOverlayItems((prev) =>
+            prev.map((it) => ({ ...it, color: colors[it.index % colors.length] }))
+        );
+    }, [applyColorToAttractor]);
+
+    const handleSnapshot = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        snapshotPNG(canvas);
+    }, []);
+
+    const handleToggleRecording = useCallback(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        if (!recorderRef.current) recorderRef.current = new CanvasRecorder();
+        const rec = recorderRef.current;
+        if (rec.isRecording()) {
+            rec.stop().then((blob) => {
+                setRecording(false);
+                if (blob) downloadBlob(blob);
+            });
+        } else {
+            const started = rec.start(canvas);
+            if (started) setRecording(true);
+        }
+    }, []);
+
+    const handleToggleTour = useCallback(() => {
+        setTourOpen((v) => {
+            if (!v) setTourIndex(0);
+            return !v;
+        });
+    }, []);
+
+    const handleTourNext = useCallback(() => {
+        setTourIndex((i) => Math.min(i + 1, attractors.current.length - 1));
+    }, []);
+
+    const handleTourPrev = useCallback(() => {
+        setTourIndex((i) => Math.max(i - 1, 0));
+    }, []);
+
     const handleTogglePause = useCallback(() => setPaused((p) => !p), []);
     const handleToggleStats = useCallback(() => setStatsVisible((v) => !v), []);
     const handleToggleHelp = useCallback(() => setHelpOpen((v) => !v), []);
@@ -451,18 +547,32 @@ const TheVoid = () => {
                 handleTogglePause();
             },
             Escape: () => {
-                if (helpOpen) {
-                    setHelpOpen(false);
-                } else {
-                    handleResetAll();
-                }
+                if (helpOpen) setHelpOpen(false);
+                else if (tourOpen) setTourOpen(false);
+                else handleResetAll();
             },
             '?': () => handleToggleHelp(),
             KeyS: () => handleToggleStats(),
             KeyT: () => toggleTheme(),
             KeyH: () => handleToggleHelp(),
+            KeyN: () => handleToggleTour(),
+            KeyR: () => handleRandomizeAll(),
+            KeyP: () => handleSnapshot(),
+            KeyV: () => handleToggleRecording(),
         }),
-        [handleResetAll, handleToggleHelp, handleTogglePause, handleToggleStats, toggleTheme, helpOpen]
+        [
+            handleResetAll,
+            handleToggleHelp,
+            handleTogglePause,
+            handleToggleStats,
+            handleToggleTour,
+            handleRandomizeAll,
+            handleSnapshot,
+            handleToggleRecording,
+            toggleTheme,
+            helpOpen,
+            tourOpen,
+        ]
     );
 
     useKeyboardShortcuts(shortcuts);
@@ -482,6 +592,7 @@ const TheVoid = () => {
                 onPointsChange={handlePointsChange}
                 onColorChange={handleColorChange}
                 onFlush={handleFlush}
+                onRandomize={handleRandomize}
             />
 
             <PausedOverlay visible={paused} />
@@ -499,15 +610,30 @@ const TheVoid = () => {
                     paused={paused}
                     theme={theme}
                     statsVisible={statsVisible}
+                    palette={palette}
+                    recording={recording}
                     onTogglePause={handleTogglePause}
                     onResetAll={handleResetAll}
                     onToggleTheme={toggleTheme}
                     onToggleStats={handleToggleStats}
                     onToggleHelp={handleToggleHelp}
+                    onToggleTour={handleToggleTour}
+                    onRandomizeAll={handleRandomizeAll}
+                    onPaletteChange={handlePaletteChange}
+                    onSnapshot={handleSnapshot}
+                    onToggleRecording={handleToggleRecording}
                 />
             </div>
 
             <HelpModal open={helpOpen} onClose={handleToggleHelp} />
+            <TourModal
+                open={tourOpen}
+                types={tourTypes}
+                index={tourIndex}
+                onNext={handleTourNext}
+                onPrev={handleTourPrev}
+                onClose={handleToggleTour}
+            />
         </div>
     );
 };

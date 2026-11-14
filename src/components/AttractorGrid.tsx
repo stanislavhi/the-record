@@ -11,6 +11,7 @@ interface AttractorGridProps {
     onPointsChange: (index: number, delta: number) => void;
     onColorChange: (index: number, hex: string) => void;
     onFlush: (index: number) => void;
+    onRandomize: (index: number) => void;
 }
 
 const AttractorGrid = memo((props: AttractorGridProps) => {

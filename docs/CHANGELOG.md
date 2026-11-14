@@ -8,6 +8,31 @@ All notable changes to **The Record**, in reverse chronological order.
 
 ---
 
+## [1.3.0] — 2026-04-18 — Wave 2: Feature add-ons + Theming polish
+
+Layers Wave 2 onto Wave 1: info tooltips, palette presets, randomizer, PNG/WebM export, a narrative tour, and a light-theme tuning pass.
+
+### Added
+- **Info tooltips** — `InfoTooltip.tsx` reveals equations, discoverer/year, Lyapunov exponent, and a short blurb on tile-title hover or focus
+- **Per-tile randomizer** — 🎲 button in `ControlPanel` next to Flush; randomizes color, rotation, scale, and speed within the bounds in `utils/randomParams.ts`
+- **Color palette presets** — Toolbar dropdown with six presets (Original, Neon, Pastel, Mono, Warm, Cold) applied across all 10 attractors
+- **Global randomize** — Toolbar "🎲 All" button, also bound to `R`
+- **PNG snapshot** — Toolbar "PNG" button (and `P`) saves `canvas.toDataURL('image/png')` as a timestamped file
+- **WebM recorder** — Toolbar "● Rec / ■ Stop" button (and `V`) wraps `canvas.captureStream()` + `MediaRecorder`; codec falls back from `vp9` to default `webm` when unsupported
+- **Narrative tour** — `TourModal.tsx` walks through each attractor with name, equations, Lyapunov, and blurb; triggered by Toolbar "Tour" button or `N`; `← →` navigate, `Esc` closes
+- **Theme-aware canvas tokens** — `ThemeTokens` now includes `voidRGB` (for fade-alpha math) and `rectStroke` (so tile borders read against a white bg)
+
+### Changed
+- **Light theme tuning** — `glow 3 → 2`, `trailAlpha 0.65 → 0.72`, `gridIntensity 0.45 → 0.6`, `fadeAlpha 0.18 → 0.12`, and `inkLow` to a slightly deeper magenta. Trails now stay visible against the near-white void without looking harsh.
+- **`TheVoid.tsx`** — Reads `tokens.voidRGB` and `tokens.rectStroke` per frame instead of hard-coded strings, so theme swaps propagate to the canvas without reloading
+- **`Toolbar.tsx`** — Now flex-wraps with a `max-w-[95vw]` clamp so the expanded button set fits on narrow screens
+- **`HelpModal.tsx`** — Existing `R`/`P`/`V`/`N` rows are now backed by working handlers
+
+### Fixed
+- Tile title is now a real `<button>` with a theme-aware focus outline and an `aria-describedby` link to its tooltip
+
+---
+
 ## [1.2.0] — 2026-04-17 — Wave 1: Refactor + Visual Polish + UX Reach
 
 A large foundational pass on `claude/refactor-visual-improvements-cP2Sr`. Splits the 533-line `TheVoid.tsx` monolith into focused components and hooks, rebuilds the control surface, adds a global toolbar, keyboard shortcuts, touch support, a stats HUD, a help modal, and a full dark/light CSS-variable theme.

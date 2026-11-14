@@ -77,6 +77,8 @@ export type PerfMode = 'low' | 'med' | 'high';
 
 export interface ThemeTokens {
     void: string;
+    voidRGB: string;
+    rectStroke: string;
     inkHigh: string;
     inkLow: string;
     grid: string;
