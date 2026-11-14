@@ -1,16 +1,14 @@
-import { useRef } from 'react';
 import TheVoid from './components/TheVoid';
-import { type HUDRef } from './components/HUD';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function App() {
-  const hudRef = useRef<HUDRef>(null);
-
   return (
-    <main className="w-full h-screen relative bg-void text-ink-high overflow-hidden">
-      <TheVoid hudRef={hudRef} />
-      {/* <HUD ref={hudRef} /> */}
+    <main className="w-full h-screen relative bg-void text-ink-high overflow-hidden transition-base duration-300">
+      <ErrorBoundary>
+        <TheVoid />
+      </ErrorBoundary>
     </main>
-  )
+  );
 }
 
-export default App
+export default App;

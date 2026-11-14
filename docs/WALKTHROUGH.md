@@ -10,15 +10,16 @@
 
 ## Getting Started
 
-1. Open the app — you'll see a pulsing **"CLICK TO MERGE"** prompt
+1. Open the app — you'll see a pulsing **"CLICK TO MERGE"** prompt with three loading dots
 2. **Click anywhere** to trigger the merge and start all 10 simulations
 3. The attractors immediately begin tracing their paths
+4. A **toolbar** appears at the bottom of the screen for global actions
 
 ---
 
 ## The Attractors
 
-Ten chaos engines run simultaneously in a 5×2 grid, each isolated in its own tile:
+Ten chaos engines run simultaneously in a responsive grid, each isolated in its own tile:
 
 | Attractor | Color | Type | What to look for |
 |-----------|-------|------|-----------------|
@@ -33,28 +34,32 @@ Ten chaos engines run simultaneously in a 5×2 grid, each isolated in its own ti
 | **Dadras** | 💜 Violet | Continuous | Complex 5-parameter folding |
 | **Aizawa** | 🟠 Amber | Continuous | Toroidal — doughnut-shaped orbit |
 
-Each attractor runs **10 parallel points** with a coherent HSL color gradient (±2% hue shift per point), creating dense layered trails that reveal the attractor's full structure over time.
+Each attractor runs **10 parallel points** by default with a coherent HSL color gradient (±2% hue shift per point), creating dense layered trails that reveal the attractor's full structure over time.
 
 ---
 
-## Interactive Controls
+## Per-Tile Controls
 
-**Hover over any tile** to reveal its control panel:
+**Hover over any tile** (or tab to it with the keyboard) to reveal its control panel. The panel is split into two groups: **Physics** (what the simulation does) and **Display** (how it looks).
 
 ### 🕹️ Joystick Rotation
-- Click and drag on the circular joystick
+- Click/tap and drag on the circular joystick
 - **Horizontal drag** → rotates on the Y-axis
 - **Vertical drag** → rotates on the X-axis
-- Lets you explore the attractor's 3D structure from any angle
+- A **live needle** tracks the current rotation angle
+- The knob itself tilts with the drag for tactile feedback
+- Works with both mouse and touch (Pointer Events)
 
 ### 🔍 Scale Slider
 - Zooms the attractor in or out within its tile
 - Range: 0.1× to 100×
+- Current value displayed alongside the slider
 
 ### ➕➖ Point Count
 - **+** adds a simulation point (max 50)
 - **−** removes one (min 1)
 - More points → denser trails, higher CPU load
+- Current count displayed between the buttons
 
 ### ⚡ Speed Slider
 - Controls the physics timestep (`dt`)
@@ -63,18 +68,91 @@ Each attractor runs **10 parallel points** with a coherent HSL color gradient (�
 
 ### 🎨 Color Picker
 - Changes the attractor's base color
-- The 10-point gradient is recomputed live from the new hue
+- The point gradient is recomputed live from the new hue
 - Trail history retains the old color until it fades
 
 ### 🚿 Flush
-- Clears all grid trail history for that tile
+- Clears the grid trail history for that tile only
 - Instant clean slate — useful when the grid gets saturated
+
+All controls include ARIA labels and visible focus rings so they're reachable via keyboard and announced by screen readers.
+
+---
+
+## Global Toolbar
+
+The fixed toolbar at the bottom center of the screen exposes whole-app actions:
+
+| Button | Action |
+|--------|--------|
+| ⏸ / ▶ | **Pause / Resume** the entire simulation |
+| ↺ | **Reset All** — flush every tile's trails |
+| ☼ / ☾ | **Theme toggle** — switch between dark and light |
+| ▦ | **Stats** — toggle the FPS / points / energy HUD |
+| ? | **Help** — open the keyboard-shortcut modal |
+
+Clicks inside the toolbar are excluded from the canvas "merge" handler, so pressing a button never spawns particles.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Space` | Pause / resume simulation |
+| `Esc` | Reset all trails |
+| `?` / `H` | Toggle the keyboard-shortcut help modal |
+| `S` | Toggle the stats overlay |
+| `T` | Toggle dark / light theme |
+
+Shortcuts are ignored while typing inside inputs, textareas, or contenteditable regions (except `Escape`, which always resets).
+
+---
+
+## Pause Overlay
+
+When paused, a dim scrim fades over the canvas and a **PAUSED** badge appears with a hint to press `Space` (or the toolbar button) to resume. Physics stepping halts immediately; grid decay also pauses so the trail state is preserved exactly as it was.
+
+---
+
+## Stats HUD
+
+Toggle with `S` or the toolbar button. The HUD sits across the top of the screen and shows:
+
+- **FPS** — rolling average, sampled every 500 ms
+- **Points** — total simulation points summed across all 10 attractors
+- **Energy bar** — the same energy budget that governs particle spawning
+- **Phase** — current run state (`INTRO`, `RUNNING`, `PAUSED`)
+
+Useful when you're tuning point counts or spotting a slowdown.
+
+---
+
+## Themes
+
+Two themes ship out of the box, both driven by CSS custom properties on `:root[data-theme="..."]`:
+
+- **Dark** (default) — void-black background, high-glow trails, crisp accent colors
+- **Light** — near-white background, muted glow, deeper accents for contrast
+
+The choice is persisted to `localStorage` under the key `theme`. On first visit the app honors the user's `prefers-color-scheme`. Canvas rendering reads the active tokens via `getThemeTokens()` each frame, so a theme flip takes effect on the very next paint without any reload.
+
+---
+
+## Touch & Responsive
+
+- All pointer input (joystick drag, canvas click-to-merge) goes through the **Pointer Events API**, so touch, pen, and mouse all work identically
+- The grid reflows by breakpoint:
+  - **Mobile** (< 640 px): 2 columns
+  - **Tablet** (640–1024 px): 3 columns
+  - **Desktop** (≥ 1024 px): 5 columns
+- Tiles keep a consistent aspect ratio at every width, and the toolbar stays pinned to the bottom center
 
 ---
 
 ## The Grid (The Database)
 
-Behind every attractor is a persistent **2px-resolution grid**. As attractor points pass through a cell, its intensity and color are recorded. Cells decay slowly (`DECAY_RATE = 0.9995`) — about 1,400 frames to reach half-brightness at 60fps — creating "long-exposure" light paintings.
+Behind every attractor is a persistent **2px-resolution grid**. As attractor points pass through a cell, its intensity and color are recorded. Cells decay slowly (`DECAY_RATE = 0.9995`) — about 1,400 frames to reach half-brightness at 60 fps — creating "long-exposure" light paintings.
 
 This persistent layer is what the project calls *The Database*: an atemporal record of all prior computation.
 
@@ -82,7 +160,7 @@ This persistent layer is what the project calls *The Database*: an atemporal rec
 
 ## The Particles (Your Ink)
 
-Moving your mouse after the merge spawns **ink particles** that drift through the void and write to the grid. You have an energy budget (100 units) that depletes as you draw and regenerates when you stay still.
+Moving your pointer after the merge spawns **ink particles** that drift through the void and write to the grid. You have an energy budget (100 units) that depletes as you draw and regenerates when you stay still.
 
 ---
 
@@ -92,9 +170,17 @@ All attractors are rendered with a fixed **isometric camera** (45° Y, 35.26° X
 
 ---
 
+## Error Boundary
+
+If the canvas initialization or a render step throws, the UI falls back to a readable **"RECORD CORRUPTED"** panel with a button to reload. The rest of the page remains responsive, so you can copy the error or navigate away.
+
+---
+
 ## Performance Notes
 
 - Grid uses 2px cells for maximum visual fidelity
-- 20 physics sub-steps per frame for smooth curves
+- Default 20 physics sub-steps per frame for smooth curves
 - Canvas clipping prevents attractors from drawing outside their tile
 - Points that diverge (|x|, |y|, or |z| > 1000) auto-reset to origin
+- FPS sampling runs on a rolling 500 ms window so a single janky frame doesn't dominate the reading
+- Performance presets (low/med/high) are scaffolded in `constants.ts` under `PERF_PRESETS` and will be exposed as a toolbar toggle in Wave 3
