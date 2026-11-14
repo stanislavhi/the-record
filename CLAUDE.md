@@ -13,7 +13,8 @@ Work ships in **waves**, one branch per wave, each cut from the previous wave's 
 | 1 | `claude/refactor-visual-improvements-cP2Sr` | Split TheVoid + core UX |
 | 2 | `claude/wave-2-features-and-theming` | Tooltips, palettes, randomizer, export, tour, light theme |
 | 3 | `claude/wave-3-polish-and-heavy-hitters` | Audit fixes + perf mode + audio synth + worker scaffold |
-| 4 | `claude/wave-4-page-2-original-attractors` | Page 2 — ten original attractors; Page 3 — the menagerie; page group + vetting script |
+| 4 | `claude/wave-4-page-2-original-attractors` | Page 2 — ten original attractors; Page 3 — the menagerie; Page 4 — the forge; RK4 classics; engine split; page group + vetting script (merged to `main`, waves 1–4) |
+| 5 | `claude/wave-5-ideas` | Docs only — `docs/IDEAS.md` backlog (hygiene, experience, science, export); nothing implemented |
 
 Each wave opens its own PR against `main`. Don't merge a later wave before the earlier one.
 

@@ -398,4 +398,5 @@ type PerfMode  = 'low' | 'med' | 'high';
 | Wave 2 | Randomizer / palettes / PNG + WebM / info tooltips / narrative tour / light theme tuning | Shipped |
 | Wave 3 | Audit fixes / generative audio synth / performance-mode preset / Web Worker scaffold | Shipped (worker gated off by `USE_WORKER`) |
 | Wave 4 | Page 2 — ten original attractors; Page 3 — the menagerie (ten classes of dynamics); three-way page control; vetting script; `center`, `StepContext`, `DrawStyle` generalisation | Shipped |
-| Later | Worker draw-pipeline swap (+ re-init on page switch) | Pending |
+| Wave 4 follow-up | RK4 classics, stability fixes, `src/engine/` split, Page 4 — the forge | Shipped |
+| Waves 5–8 | Hygiene → experience → science features → export; backlog in [`IDEAS.md`](IDEAS.md) | Ideas only, not implemented |
